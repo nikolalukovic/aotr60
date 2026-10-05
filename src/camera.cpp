@@ -43,6 +43,24 @@ struct SwapSave {
 CamRec g_rec[2]; // [1] = M_k (this A-render), [0] = M_{k-1}
 SwapSave g_save;
 
+// Living World strategic map camera ([0xDE4958]+0xC0), rebuilt from the LW view state on every LW scene draw by
+// 0x49B4A5. Recorded right after that build; [1] = this render's, [0] = the previous A-render's.
+struct LwCamRec {
+    uint8_t* view;
+    uint8_t* cam;
+    float xf[12];
+    uint32_t vp[7];
+    int32_t state;      // view+0x14: 2 fade-out, 3 fade-in
+    uint8_t active;     // view+0x18
+    uint8_t suspended;  // view+0x19
+    uint32_t renderId;
+    bool valid;
+};
+LwCamRec g_lwRec[2];
+constexpr uint32_t kLwViewCamera = 0xC0;
+constexpr float kLwCamCutDistance = 1500.0f; // eye translation between two A-renders (map extent 4200 x 3450)
+bool g_lwMismatchLogged = false;
+
 using SetTransformFn = void(__thiscall*)(void* cam, const float* xf);
 using ShadowRefitFn = void(__thiscall*)(void* shadowManager, void* cam);
 using ShakeActiveFn = bool(__thiscall*)(void* shaker);
@@ -67,8 +85,9 @@ void ShadowRefit(uint8_t* cam)
     }
 }
 
-// Shows (xf, vp) through `cam` until CamSwapEnd(). No-op when the camera already shows exactly that.
-void BeginSwap(uint8_t* cam, const float* xf, const uint32_t* vp)
+// Shows (xf, vp) through `cam` until CamSwapEnd(). No-op when the camera already shows exactly that. `refit` fits
+// the shadow manager to the swapped camera (tactical camera only: stock never fits it to the Living World camera).
+void BeginSwap(uint8_t* cam, const float* xf, const uint32_t* vp, bool refit)
 {
     bool sameXf = std::memcmp(cam + kCamTransform, xf, 48) == 0;
     bool sameVp = std::memcmp(cam + kCamViewPlane, vp, 28) == 0;
@@ -84,7 +103,7 @@ void BeginSwap(uint8_t* cam, const float* xf, const uint32_t* vp)
     }
     std::memcpy(cam + kCamViewPlane, vp, 28);
     cam[kCamDirty] = 0;
-    if (RefitWanted()) {
+    if (refit && RefitWanted()) {
         ShadowRefit(cam);
         g_save.refit = true;
     }
@@ -139,11 +158,15 @@ uint8_t* TacticalCamera()
 } // namespace
 
 CameraStats g_cameraStats;
+LwStats g_lwStats;
 
 void CameraReset()
 {
     g_rec[0].valid = false;
     g_rec[1].valid = false;
+    g_lwRec[0].valid = false;
+    g_lwRec[1].valid = false;
+    LwPresentReset();
 }
 
 void CamSwapEnd()
@@ -178,7 +201,7 @@ extern "C" void __cdecl CamSwapToMk_B(uint8_t* viewB4)
         ++g_cameraStats.bNoRecord;
         return;
     }
-    BeginSwap(cam, r.xf, r.vp);
+    BeginSwap(cam, r.xf, r.vp, true);
     ++g_cameraStats.bSwaps;
 }
 
@@ -247,6 +270,9 @@ extern "C" void __cdecl SceneOpen_A()
     if (!gd || Field<uint8_t>(gd, 0xAF6) == 1) {
         return; // load-screen render
     }
+    if (LwSceneShown()) {
+        return; // Living World map: its own camera presentation (LwCamAfterBuild); nothing reads the fraction
+    }
     OpenWindow(g_pw2Open);
     if (!g_featCamInterp || g_swapActive) {
         return;
@@ -296,13 +322,106 @@ extern "C" void __cdecl SceneOpen_A()
         ++g_cameraStats.aShakeHeld;
     }
     // The current camera is C_k' (after input); only the scene shows the halfway picture.
-    BeginSwap(cam, mid.xf, reinterpret_cast<const uint32_t*>(mid.vp));
+    BeginSwap(cam, mid.xf, reinterpret_cast<const uint32_t*>(mid.vp), true);
     ++g_cameraStats.aSwaps;
+}
+
+// LW6_CAM_REC: right after the LW camera build 0x49B4A5 in the LW scene draw (60 mode, main thread, clientUpdate).
+// A-render: record M_k and show the halfway camera between M_{k-1} and M_k for the LW scene render only
+// (LW6_CAM_SCENE_END ends it). Only the W3D camera is swapped, never the LW view fields: LW logic reads the target
+// +0x110 the build derives from them (vt70 0x49A64F). B-render: the build reproduced M_k from unchanged state;
+// verify it.
+extern "C" void __cdecl LwCamAfterBuild(uint8_t* view)
+{
+    uint8_t* cam = *reinterpret_cast<uint8_t**>(view + kLwViewCamera);
+    if (!cam) {
+        return;
+    }
+    if (g_inB) {
+        const LwCamRec& r = g_lwRec[1];
+        if (!r.valid || r.renderId != g_renderId - 1 || r.cam != cam) {
+            ++g_lwStats.bNoRecord;
+            return;
+        }
+        if (std::memcmp(cam + kCamTransform, r.xf, 48) == 0 && std::memcmp(cam + kCamViewPlane, r.vp, 28) == 0) {
+            ++g_lwStats.bExact;
+            return;
+        }
+        ++g_lwStats.bMismatch;
+        if (!g_lwMismatchLogged) {
+            g_lwMismatchLogged = true;
+            Log("WARN Living World camera on a B-render differs from the A-render's: pos %.3f %.3f %.3f angle %.4f "
+                "zoom %.4f vel %.5f fade %.3f state %d active %u suspended %u",
+                Field<float>(view, 0xF8), Field<float>(view, 0xFC), Field<float>(view, 0x100),
+                Field<float>(view, 0x11C), Field<float>(view, 0x134), Field<float>(view, 0x138),
+                Field<float>(view, 0x198), Field<int32_t>(view, 0x14), Field<uint8_t>(view, 0x18),
+                Field<uint8_t>(view, 0x19));
+        }
+        return;
+    }
+    if (g_lwRec[1].renderId != g_renderId) {
+        g_lwRec[0] = g_lwRec[1];
+    }
+    LwCamRec& r1 = g_lwRec[1];
+    r1.view = view;
+    r1.cam = cam;
+    std::memcpy(r1.xf, cam + kCamTransform, 48);
+    std::memcpy(r1.vp, cam + kCamViewPlane, 28);
+    r1.state = Field<int32_t>(view, 0x14);
+    r1.active = Field<uint8_t>(view, 0x18);
+    r1.suspended = Field<uint8_t>(view, 0x19);
+    r1.renderId = g_renderId;
+    r1.valid = true;
+    if (!g_featCamInterp || g_swapActive) {
+        return;
+    }
+    const LwCamRec& r0 = g_lwRec[0];
+    if (!r0.valid || r0.renderId != g_renderId - 2 || r0.cam != cam || r0.view != view) {
+        ++g_lwStats.aNoHistory;
+        return;
+    }
+    if (r0.state != r1.state || r0.active != r1.active || r0.suspended != r1.suspended) {
+        ++g_lwStats.aCuts; // activation, fades, suspend: present M_k
+        return;
+    }
+    if (std::memcmp(r0.xf, r1.xf, 48) == 0 && std::memcmp(r0.vp, r1.vp, 28) == 0) {
+        return; // camera did not move
+    }
+    CameraPose p0;
+    CameraPose p1;
+    std::memcpy(p0.xf, r0.xf, 48);
+    std::memcpy(p0.vp, r0.vp, 28);
+    std::memcpy(p1.xf, r1.xf, 48);
+    std::memcpy(p1.vp, r1.vp, 28);
+    CameraCutLimits limits;
+    limits.maxDistance = kLwCamCutDistance;
+    limits.allowFarChange = true;
+    CameraPose mid;
+    if (!InterpolateCameraHalfway(p0, p1, &mid, limits)) {
+        ++g_lwStats.aCuts; // instant jumps (0x6BF878: battle return, DelayedSplineCamera)
+        return;
+    }
+    BeginSwap(cam, mid.xf, reinterpret_cast<const uint32_t*>(mid.vp), false);
+    ++g_lwStats.aSwaps;
+}
+
+// LW6_CAM_SCENE_END: right after WW3D::Render of the LW scene. The UI drawn next and everything after the draw
+// see the real camera.
+extern "C" void __cdecl LwCamSceneEnd()
+{
+    if (g_swapActive && g_save.cam == g_lwRec[1].cam) {
+        CamSwapEnd();
+        ++g_lwStats.swapEnds;
+    }
 }
 
 // drawFrame exit (0x44A271): real camera and stock fraction/key back.
 extern "C" void __cdecl SceneRestore()
 {
+    if (g_lwRestoreN && OnMainThread()) {
+        ++g_lwStats.iconLateCloses;
+        LwPresentClose();
+    }
     if (g_swapActive && OnMainThread()) {
         CamSwapEnd();
     }

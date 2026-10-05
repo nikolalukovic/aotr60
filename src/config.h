@@ -15,7 +15,7 @@ struct Config {
     int telemetry = 0; // 0 off, 1 invariants/rates, 2 determinism traces
     bool fallback = true;
     bool allowDelayfix = false;
-    bool allowLivingWorldMap = false;
+    bool livingWorldMap = true;      // phase 6: 60 FPS on the Living World strategic map too
     bool unitInterpolation = true;   // phase 2b: units drawn at half-steps on the inserted frames
     bool cameraInterpolation = true; // phase 3: camera picture interpolated on the inserted frames
     bool presentPacing = true;       // without vsync: space the presented frames evenly

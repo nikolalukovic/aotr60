@@ -80,6 +80,49 @@ const char* DisplayBlockReason()
     return cached;
 }
 
+// Game mode GL+0x110 (0 campaign / LW battle, 2 skirmish / War of the Ring battle, 6 tutorial, 8 Living World map)
+// and the Living World strategic map (phase 6). The map is identified by mode 8 together with the LW view and LW
+// logic state, not by GL+0x125: the battle-return handler's GameLogic::reset (0x6BF21B) clears GL+0x125 while the map
+// stays shown, and the shell's map preview has GL+0x125 = 0 with the LW view active but suspended. Activation, fades,
+// battle transitions and UI sequences on the map stay in 30 mode.
+const char* GameModeBlockReason(uint8_t* gl)
+{
+    uint32_t mode = Field<uint32_t>(gl, 0x110);
+    uint8_t* view = Ptr(kLwView);
+    uint8_t* lwl = Ptr(kLwLogic);
+    bool viewActive = view && Field<uint8_t>(view, 0x18);
+    if (mode != 8 && !viewActive && !Field<uint8_t>(gl, 0x125)) {
+        return (mode == 0 || mode == 2 || mode == 6) ? nullptr : "game mode (menu or multiplayer)";
+    }
+    if (!g_cfg.livingWorldMap) {
+        return "Living World strategic map (LivingWorldMap=0)";
+    }
+    if (mode != 8) {
+        return "Living World map transition"; // battle fade-in before the mode returns to 8, shell map preview
+    }
+    if (!view || !lwl) {
+        return "Living World map not ready";
+    }
+    if (!Field<uint8_t>(lwl, 0xB4) || !Field<uint8_t>(lwl, 0xB5)) {
+        return "Living World logic not running";
+    }
+    if (!viewActive || Field<uint8_t>(view, 0x19)) {
+        return "Living World map not shown";
+    }
+    int32_t state = Field<int32_t>(view, 0x14);
+    if (state == 2 || state == 3) {
+        return "Living World map fade";
+    }
+    if (Field<uint8_t>(view, 0x24) || Field<uint8_t>(view, 0x25) || Field<uint8_t>(lwl, 0x176) ||
+        Field<uint8_t>(lwl, 0x177)) {
+        return "Living World battle transition";
+    }
+    if (Ptr(kUiSequenceQueue)) {
+        return "UI sequence running";
+    }
+    return nullptr;
+}
+
 // Conditions for staying in 60 mode (PLAN §1.8). Returns nullptr when allowed, else the reason.
 const char* BlockReason()
 {
@@ -100,9 +143,8 @@ const char* BlockReason()
     if (Ptr(kTheNetwork)) {
         return "network game";
     }
-    uint32_t mode = Field<uint32_t>(gl, 0x110);
-    if (mode != 0 && mode != 2 && mode != 6) {
-        return "game mode (menu, multiplayer or Living World map)";
+    if (const char* mode = GameModeBlockReason(gl)) {
+        return mode;
     }
     uint32_t mp = Field<uint32_t>(gl, 0x114);
     if (mp == 1 || mp == 2) {
@@ -110,9 +152,6 @@ const char* BlockReason()
     }
     if (Field<uint8_t>(gl, 0x9D)) {
         return "multiplayer start";
-    }
-    if (Field<uint8_t>(gl, 0x125)) {
-        return "Living World strategic map";
     }
     uint8_t* rec = Ptr(kRecorder);
     if (rec && Field<uint32_t>(rec, 0x1C) == 1) {
@@ -169,6 +208,11 @@ const char* StartBlockReason()
 
 void CloseWindowsSafetyNet(const char* where)
 {
+    if (g_lwRestoreN) {
+        Log("WARN %s: Living World objects still drawn halfway - restoring", where);
+        ++g_lwStats.iconLateCloses;
+        LwPresentClose();
+    }
     if (g_swapActive) {
         Log("WARN %s: camera swap still active - restoring", where);
         CamSwapEnd();

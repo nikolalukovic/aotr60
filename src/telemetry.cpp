@@ -41,6 +41,7 @@ struct Totals {
     uint64_t mFrames = 0;      // m_frame advances, accumulated per render (resets excluded)
     int64_t syncMs = 0;        // W3D sync accumulator advances, accumulated per render
     uint64_t clockResets = 0;  // renders where m_frame or the sync clock went backwards (new game, load, exit)
+    uint64_t lwTicks = 0;      // Living World logic ticks (LW frame +0x100 advanced)
 };
 Totals g_t;
 Totals g_tPrev;
@@ -57,6 +58,7 @@ uint32_t g_prevVt188 = 0;
 // Logic RNG guard.
 uint32_t g_seedAtExit = 0;
 bool g_seedValid = false;
+uint64_t g_lwTickRendersA = 0; // A-renders count at the previous Living World logic tick
 
 // Current tick window (between two GameLogic::update(1) calls).
 struct TickWindow {
@@ -226,11 +228,12 @@ void Report(int64_t now)
     char extra[256];
     uint32_t iters = p.iterations - q.iterations;
     double onTimePct = iters ? 100.0 * (p.onTimeIterations - q.onTimeIterations) / iters : 0.0;
-    std::snprintf(extra, sizeof(extra), ",%.2f,%.2f,%.2f,%.2f,%.1f,%u,%.1f,%u,%.1f\r\n",
+    std::snprintf(extra, sizeof(extra), ",%.2f,%.2f,%.2f,%.2f,%.1f,%u,%.1f,%u,%.1f,%.3f,%u,%u\r\n",
                   na ? ms(p.relPresentTicksA - q.relPresentTicksA) / na : 0.0,
                   nb ? ms(p.relPresentTicksB - q.relPresentTicksB) / nb : 0.0, ms(p.presentSpacingMin),
                   ms(p.presentSpacingMax), ms(p.presentWaitTicks - q.presentWaitTicks), p.lateReleases - q.lateReleases,
-                  ms(p.lateReleaseTicks - q.lateReleaseTicks), g_cameraStats.aShakerFar, onTimePct);
+                  ms(p.lateReleaseTicks - q.lateReleaseTicks), g_cameraStats.aShakerFar, onTimePct,
+                  static_cast<double>(g_t.lwTicks - g_tPrev.lwTicks) / dt, g_lwStats.aSwaps, g_lwStats.iconPresented);
     size_t len = std::strlen(line);
     if (len >= 2) {
         line[len - 2] = 0; // drop "\r\n" and append the pacing columns
@@ -263,7 +266,8 @@ void TelemetryInit(const Config& cfg)
                     "mframe_s,sync_ms_s,debt_ms,gaps,seed_outside_logic,tick_checks,tick_errors,c5_replays,"
                     "cam_b_swaps,cam_a_swaps,clock_resets,cam_a_cuts,cam_a_shake,cam_a_nohist,"
                     "a_rel_present_ms,b_rel_present_ms,present_spacing_min_ms,present_spacing_max_ms,present_wait_ms,"
-                    "late_releases,late_release_ms,cam_shaker_far,on_time_pct\r\n");
+                    "late_releases,late_release_ms,cam_shaker_far,on_time_pct,lw_ticks_s,lw_cam_a_swaps,"
+                    "lw_objects_presented\r\n");
             if (cfg.telemetry >= 2) {
                 SYSTEMTIME t;
                 GetLocalTime(&t);
@@ -273,7 +277,9 @@ void TelemetryInit(const Config& cfg)
                 std::wstring tpath = dir + name;
                 g_trace = CreateFileW(tpath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
                                       FILE_ATTRIBUTE_NORMAL, nullptr);
-                const char header[] = "# logic_frame sub seed crc(sub 1 only) mode(30/60)\r\n";
+                const char header[] = "# logic_frame sub seed crc(sub 1 only) mode(30/60)\r\n"
+                                      "# Living World ticks: # LW lw_frame seed_in seed_out view_hash objects_hash "
+                                      "a_renders_since_last_lw_tick mode(30/60)\r\n";
                 DWORD written;
                 WriteFile(g_trace, header, sizeof(header) - 1, &written, nullptr);
             }
@@ -341,6 +347,15 @@ void TelemetryOnPreRender(int stepperS)
             g_c5Stats.replays, g_c5Stats.suppressed, g_c5Stats.drops, g_cameraStats.bSwaps, g_cameraStats.bNoRecord,
             g_cameraStats.aSwaps, g_cameraStats.guardEnds, g_cameraStats.aShakeHeld, g_cameraStats.aShake,
             g_cameraStats.aCuts);
+        const LwStats& lw = g_lwStats;
+        if (g_t.lwTicks || lw.aSwaps || lw.bExact || lw.iconSnapshots) {
+            Log("telemetry: Living World %llu logic ticks; camera A-swaps %u no-history %u cuts %u ends %u, B exact %u "
+                "mismatch %u no-record %u; objects snapshots %u presented %u far %u restore-bad %u late-close %u "
+                "overflow %u",
+                static_cast<unsigned long long>(g_t.lwTicks), lw.aSwaps, lw.aNoHistory, lw.aCuts, lw.swapEnds,
+                lw.bExact, lw.bMismatch, lw.bNoRecord, lw.iconSnapshots, lw.iconPresented, lw.iconFar,
+                lw.iconRestoreBad, lw.iconLateCloses, lw.iconOverflow);
+        }
         g_lastSummary = now;
     }
 }
@@ -380,6 +395,69 @@ void TraceLogicCall(uint8_t* logic, int sub)
     char line[96];
     int n = std::snprintf(line, sizeof(line), "%u %d %08X %08X %d\r\n", frame, sub, Read<uint32_t>(kLogicRngSeed), crc,
                           g_m60 ? 60 : 30);
+    DWORD written;
+    WriteFile(g_trace, line, static_cast<DWORD>(n), &written, nullptr);
+}
+
+namespace {
+
+uint32_t Fnv1a(uint32_t h, const uint8_t* object, uint32_t offset, uint32_t size)
+{
+    for (uint32_t i = 0; i < size; ++i) {
+        h = (h ^ object[offset + i]) * 16777619u;
+    }
+    return h;
+}
+
+// Living World view state at an LW logic tick: everything LW logic reads from the client (camera pose and zoom,
+// fade state and flags, the look-at target) must be identical at 30 and 60 FPS.
+uint32_t LwViewHash()
+{
+    uint8_t* view = Ptr(kLwView);
+    if (!view) {
+        return 0;
+    }
+    uint32_t h = 2166136261u;
+    h = Fnv1a(h, view, 0x14, 4);   // state
+    h = Fnv1a(h, view, 0x18, 2);   // active, suspended
+    h = Fnv1a(h, view, 0x24, 2);   // fade-done flags
+    h = Fnv1a(h, view, 0xF8, 12);  // position
+    h = Fnv1a(h, view, 0x110, 12); // look-at target (written by the draw, read by LW logic)
+    h = Fnv1a(h, view, 0x11C, 4);  // angle
+    h = Fnv1a(h, view, 0x134, 8);  // zoom, zoom velocity
+    h = Fnv1a(h, view, 0x198, 4);  // fade
+    return h;
+}
+
+using LwLogicUpdateFn = void(__thiscall*)(uint8_t* lwLogic);
+constexpr uint32_t kFnLwLogicUpdate = 0x6BE50E; // TheLivingWorldLogic::update, thiscall, no args
+
+} // namespace
+
+// TheLivingWorldLogic vt+0x28 (0xC1459C), called by the stepper right after GameLogic::update(1) (0x632A92) in every
+// game mode. On the Living World map it runs the campaign logic (LW AI, auto-resolve), which uses the logic RNG.
+extern "C" void __fastcall LwLogicUpdateWrapper(uint8_t* lwLogic, void*)
+{
+    uint32_t frame = Field<uint32_t>(lwLogic, 0x100);
+    uint32_t seedIn = Read<uint32_t>(kLogicRngSeed);
+    reinterpret_cast<LwLogicUpdateFn>(kFnLwLogicUpdate)(lwLogic);
+    uint32_t seedOut = Read<uint32_t>(kLogicRngSeed);
+    if (g_seedValid) {
+        g_seedAtExit = seedOut; // LW logic RNG use is logic, not "outside logic"
+    }
+    if (Field<uint32_t>(lwLogic, 0x100) == frame) {
+        return; // LW logic idle (not on the map, paused, between phases)
+    }
+    ++g_t.lwTicks;
+    uint64_t rendersA = g_t.rendersA - g_lwTickRendersA;
+    g_lwTickRendersA = g_t.rendersA;
+    if (g_trace == INVALID_HANDLE_VALUE) {
+        return;
+    }
+    char line[128];
+    int n = std::snprintf(line, sizeof(line), "# LW %u %08X %08X %08X %08X %llu %d\r\n",
+                          Field<uint32_t>(lwLogic, 0x100), seedIn, seedOut, LwViewHash(), LwIconHash(),
+                          static_cast<unsigned long long>(rendersA), g_m60 ? 60 : 30);
     DWORD written;
     WriteFile(g_trace, line, static_cast<DWORD>(n), &written, nullptr);
 }

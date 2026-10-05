@@ -31,10 +31,12 @@ EXTERN g_tmFFin60:DWORD, g_anomaly:DWORD, g_unknownPath:DWORD
 EXTERN g_vt188Calls:DWORD, g_vt188LastRet:DWORD, g_palBadRet:DWORD, g_iguiBadRet:DWORD
 EXTERN g_lp4b:BYTE, g_uiPart4b:BYTE, g_wanim4b:BYTE
 EXTERN g_featPresent:BYTE, g_radarAFrame:DWORD
+EXTERN g_uiSeqLast:DWORD, g_lwRestoreN:DWORD
 
 EXTERN OnPreRender:PROC, OnPostRender:PROC, OnEngineReset:PROC
 EXTERN AotR60_Pacer:PROC, AotR60_PresentSkip:PROC, AotR60_PresentDone:PROC
 EXTERN CamSwapToMk_B:PROC, S2_RecordMkAndOpen:PROC, SceneOpen_A:PROC, SceneRestore:PROC, CamSwapEndGuard:PROC
+EXTERN LwIconSnapshot:PROC, LwPresentOpen:PROC, LwPresentClose:PROC, LwCamAfterBuild:PROC, LwCamSceneEnd:PROC
 
 ; g_anomaly bits (keep in sync with runtime.h)
 ANOM_PAL_CALLER  EQU 1
@@ -147,6 +149,10 @@ DEFTARGET 48C706
 DEFTARGET 48C76B
 DEFTARGET 449DB0
 DEFTARGET 5208D0
+DEFTARGET 80000F
+DEFTARGET 6C038B
+DEFTARGET 49B4A5
+DEFTARGET 518000
 DEFTARGET 48B7B6
 DEFTARGET 4FD25A
 DEFTARGET 4CF434
@@ -953,6 +959,8 @@ STUB_SCENE_RESTORE PROC
     jne work
     cmp byte ptr [g_pw2Open], 0
     jne work
+    cmp dword ptr [g_lwRestoreN], 0
+    jne work
     jmp dword ptr [T_5208D0]
 work:
     SAVE_ALL
@@ -1476,5 +1484,121 @@ bpath:
     SKIPCNT IDX_INT_TERRAIN_TILEUPD
     ret
 STUB_TERRAIN_OFU ENDP
+
+; ===============================================================================================================
+; Phase 6: Living World strategic map
+; ===============================================================================================================
+
+; GATE_CU_UISEQ 0x6324A6 'call 0x80000F' (UI-sequence runner: fades, LW activation, clearGameData). A-only, so
+; every sequence step runs once per stock render and never inside a B-render; B-renders get the flags the paired
+; A-render got (bit 0 then equals [0xDE4330], so nothing toggles).
+Gate_CU_UISEQ PROC
+    cmp byte ptr [g_m60], 0
+    je tail
+    cmp byte ptr [g_uiTick], 0
+    je skip
+    RUNCNT IDX_GATE_CU_UISEQ
+    call dword ptr [T_80000F]
+    mov dword ptr [g_uiSeqLast], eax
+    ret
+tail:
+    RUNCNT IDX_GATE_CU_UISEQ
+    jmp dword ptr [T_80000F]
+skip:
+    SKIPCNT IDX_GATE_CU_UISEQ
+    mov eax, dword ptr [g_uiSeqLast]
+    ret
+Gate_CU_UISEQ ENDP
+
+; LW_ICON_SNAP 0x6C0E6B 'mov ecx,esi / call 0x6C038B' (LW client object update; ESI = LW view). A-renders snapshot
+; the object transforms first. Two NOPs follow the call in the patched span.
+STUB_LW_ICON_SNAP PROC
+    mov ecx, esi
+    cmp byte ptr [g_m60], 0
+    je go
+    cmp byte ptr [g_inB], 0
+    jne go
+    cmp byte ptr [g_inClientUpdate], 0
+    je go
+    cmp byte ptr [g_featPresent], 0
+    je go
+    IS_MAIN eax
+    jne go
+    RUNCNT IDX_LW_ICON_SNAP
+    SAVE_ALL
+    push esi
+    call LwIconSnapshot                 ; cdecl(view)
+    add esp, 4
+    RESTORE_ALL
+go:
+    jmp dword ptr [T_6C038B]
+STUB_LW_ICON_SNAP ENDP
+
+; LW_SCENE_PRESENT 0x449F43 'mov eax,[ecx] / call [eax+0x20]' (LW scene draw 0x49B618; ECX = LW view). A-renders
+; draw the moved LW objects halfway and restore them right after.
+STUB_LW_SCENE_PRESENT PROC
+    cmp byte ptr [g_m60], 0
+    je stock
+    cmp byte ptr [g_inB], 0
+    jne stock
+    cmp byte ptr [g_inClientUpdate], 0
+    je stock
+    IS_MAIN_KEEP_EAX
+    jne stock
+    RUNCNT IDX_LW_SCENE_PRESENT
+    SAVE_ALL
+    call LwPresentOpen                  ; cdecl()
+    RESTORE_ALL
+    mov eax, [ecx]
+    call dword ptr [eax + 20h]
+    SAVE_ALL
+    call LwPresentClose                 ; cdecl()
+    RESTORE_ALL
+    ret
+stock:
+    mov eax, [ecx]
+    jmp dword ptr [eax + 20h]
+STUB_LW_SCENE_PRESENT ENDP
+
+; LW6_CAM_REC 0x49B77E 'call 0x49B4A5' (LW camera build in the LW scene draw; ECX = ESI = LW view). Record the
+; camera; A-renders show the halfway camera for the scene render, B-renders verify they rebuilt M_k.
+STUB_LW6_CAM_REC PROC
+    cmp byte ptr [g_m60], 0
+    je stock
+    cmp byte ptr [g_inClientUpdate], 0
+    je stock
+    IS_MAIN eax
+    jne stock
+    call dword ptr [T_49B4A5]
+    RUNCNT IDX_LW6_CAM_REC
+    SAVE_ALL
+    push esi
+    call LwCamAfterBuild                ; cdecl(view)
+    add esp, 4
+    RESTORE_ALL
+    ret
+stock:
+    jmp dword ptr [T_49B4A5]
+STUB_LW6_CAM_REC ENDP
+
+; LW6_CAM_SCENE_END 0x49B78F 'call 0x518000' (WW3D::Render(scene, camera), cdecl). End the A-render camera swap
+; right after the LW scene render; the caller pops the two arguments.
+STUB_LW6_CAM_SCENE_END PROC
+    cmp byte ptr [g_swapActive], 0
+    je stock
+    IS_MAIN_KEEP_EAX
+    jne stock
+    push dword ptr [esp + 8]            ; camera
+    push dword ptr [esp + 8]            ; scene
+    call dword ptr [T_518000]
+    add esp, 8
+    RUNCNT IDX_LW6_CAM_SCENE_END
+    SAVE_ALL
+    call LwCamSceneEnd                  ; cdecl(); EAX (render result) is kept
+    RESTORE_ALL
+    ret
+stock:
+    jmp dword ptr [T_518000]
+STUB_LW6_CAM_SCENE_END ENDP
 
 END

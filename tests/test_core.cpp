@@ -26,7 +26,7 @@ TEST(config_defaults_when_empty)
     CHECK_EQ(cfg.telemetry, 0);
     CHECK(cfg.fallback);
     CHECK(!cfg.allowDelayfix);
-    CHECK(!cfg.allowLivingWorldMap);
+    CHECK(cfg.livingWorldMap);
 }
 
 TEST(config_default_template_parses_to_defaults)
@@ -37,19 +37,20 @@ TEST(config_default_template_parses_to_defaults)
     CHECK(cfg.enabled);
     CHECK(cfg.pacing == Pacing::Stock);
     CHECK_EQ(cfg.telemetry, 0);
+    CHECK(cfg.livingWorldMap);
 }
 
 TEST(config_parses_values_comments_and_case)
 {
     std::string warnings;
     Config cfg = ParseConfig("[AotR60]\r\n enabled = no ; comment\r\nPACING=Nominal\r\nTelemetry = 2\r\n"
-                             "# Fallback = 0\r\nAllowLivingWorldMap = yes\r\nUnknownKey = 5\r\n",
+                             "# Fallback = 0\r\nLivingWorldMap = no\r\nAllowLivingWorldMap = 1\r\nUnknownKey = 5\r\n",
                              &warnings);
     CHECK(!cfg.enabled);
     CHECK(cfg.pacing == Pacing::Nominal);
     CHECK_EQ(cfg.telemetry, 2);
     CHECK(cfg.fallback);
-    CHECK(cfg.allowLivingWorldMap);
+    CHECK(!cfg.livingWorldMap); // the retired AllowLivingWorldMap key is ignored
     CHECK(warnings.empty());
 }
 

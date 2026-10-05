@@ -5,8 +5,9 @@ game speed**. The game logic still runs exactly as in the stock game (5 logic ti
 second); AotR60 inserts one extra, presentation-only frame between every two stock frames and draws units, the camera
 and effects half a step in between. Save games stay compatible both ways.
 
-Where it is active: campaign, Living World battles, skirmish against the AI and tutorials. Menus, multiplayer,
-replays, the Living World strategic map and Create-a-Hero stay at the stock 30 FPS.
+Where it is active: campaign, Living World (the strategic map and its battles), skirmish against the AI and
+tutorials. Menus, multiplayer, replays and Create-a-Hero stay at the stock 30 FPS. On the Living World map, fades,
+the switch to and from battles and other transitions run at 30 FPS for a moment.
 
 ## Install
 
@@ -65,8 +66,9 @@ repeats) and then tries again. Isolated hitches do not trigger this.
 | `UnitInterpolation` | 1 | draw units half a step in between on the inserted frames |
 | `CameraInterpolation` | 1 | interpolate the camera picture too (needs UnitInterpolation) |
 | `PresentPacing` | 1 | without vsync: space the presented frames evenly |
+| `LivingWorldMap` | 1 | 60 FPS on the Living World strategic map too (0 = the map stays at 30; battles unaffected) |
 | `Fallback` | 1 | automatic fallback to 30 FPS on sustained overload |
-| `Telemetry` | 0 | 1 = speed/consistency checks in `aotr60.log` and `aotr60_rates.csv` (testing) |
+| `Telemetry` | 0 | 1 = speed/consistency checks in `aotr60.log` and `aotr60_rates.csv`; 2 = also a logic trace (testing) |
 
 Logs: `aotr60.log` (and the previous session's `aotr60.log.prev`) in the same folder.
 
@@ -78,10 +80,13 @@ See `docs/PLAN.md` for the full design and `docs/analysis/` for the reverse-engi
   halted step, and a **B-render** (a presentation-only repeat) followed by the unmodified logic step. Logic therefore
   runs at exactly the stock rate and sees exactly the stock state.
 - Everything that advances per drawn frame — UI updates, camera stepping, input, particle updates, animation-frame
-  effects, fades, counters — runs only on A-renders (124 verified patch sites in `tools/sites.json`, each with a
+  effects, fades, counters — runs only on A-renders (131 verified patch sites in `tools/sites.json`, each with a
   byte-exact stock path).
 - On A-renders units are drawn at the half step between logic frames and the camera picture halfway between the
   previous and current camera; B-renders show exactly the stock picture.
+- On the Living World map the armies and the map camera are moved by the A-render's client update as in stock (the
+  Living World logic reads the result). A-renders draw the map with each moved army and the camera halfway between
+  their previous and current position and restore the exact positions right after drawing.
 - A QPC-based pacer replaces the stock 33 ms frame limiter while 60 mode is active (two 16.5 ms halves).
 
 ## Development
@@ -91,5 +96,8 @@ See `docs/PLAN.md` for the full design and `docs/analysis/` for the reverse-engi
 - `src/stubs/stubs.asm` holds all stubs; `src/frame_ctl.cpp` the 30/60 mode controller; `src/pacer.cpp` the pacer;
   `src/camera.cpp` the camera presentation; `src/telemetry.cpp` the measurements.
 - Unit tests: `build\Release\aotr60_tests.exe` (run by `build.ps1`).
-- `Telemetry = 2` writes `aotr60_trace.txt` (logic frame, logic RNG seed and the engine's sync CRC per logic tick);
-  `tools/compare_traces.py A B` compares two traces, e.g. a game played at 60 FPS and its replay played back at 30.
+- `Telemetry = 2` writes `aotr60_trace_<date>_<time>.txt` per session: logic frame, logic RNG seed and the engine's
+  sync CRC per logic call, plus one `# LW` line per Living World logic tick (seeds, map view state, army transforms).
+  `tools/compare_traces.py` finds a game played at 60 FPS and a 30 FPS game from the same starting seed in the newest
+  trace (the replay of a skirmish, or the same save loaded again with Ctrl+Shift+F11 off) and compares them tick by
+  tick; `tools/compare_traces.py A B` compares the longest game of two trace files.

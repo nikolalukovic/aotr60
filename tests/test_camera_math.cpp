@@ -92,3 +92,26 @@ TEST(camera_cuts_are_not_interpolated)
     c.vp[2] = 1.2f;
     CHECK(!InterpolateCameraHalfway(Pose(0, 0, 0, 0), c, &m)); // zoom extent changed by 20 %
 }
+
+TEST(camera_living_world_zoom_keeps_the_larger_far_plane)
+{
+    CameraPose a = Pose(0, 0, 0, 600.0f);
+    CameraPose b = Pose(0, 0, 0, 700.0f);
+    a.vp[6] = 2750.0f;
+    b.vp[6] = 2600.0f;
+    CameraCutLimits lw;
+    lw.allowFarChange = true;
+    CameraPose m{};
+    CHECK(InterpolateCameraHalfway(a, b, &m, lw));
+    CHECK(Near(m.xf[11], 650.0f));
+    CHECK(m.vp[6] == 2750.0f);
+    CHECK(InterpolateCameraHalfway(b, a, &m, lw));
+    CHECK(m.vp[6] == 2750.0f);
+    CHECK(!InterpolateCameraHalfway(a, b, &m)); // the tactical camera still cuts on a far-plane change
+    CameraPose c = b;
+    c.vp[5] = 20.0f;
+    CHECK(!InterpolateCameraHalfway(a, c, &m, lw)); // near plane changed
+    CameraPose d = b;
+    d.vp[4] = 1.7777f;
+    CHECK(!InterpolateCameraHalfway(a, d, &m, lw)); // aspect changed
+}

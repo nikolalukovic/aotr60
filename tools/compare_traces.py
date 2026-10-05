@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """Determinism check for AotR60 logic traces (Telemetry = 2 writes aotr60_trace_<date>_<time>.txt).
 
-A trace line is: logic_frame sub seed crc mode. '# reset' lines separate games (menu map, a match, a replay).
+A trace line is: logic_frame sub seed crc mode. '# reset' lines separate games (menu map, a match, a replay, a
+loaded save). On the Living World strategic map each LW logic tick adds a comment line
+'# LW lw_frame seed_in seed_out view_hash objects_hash a_renders_since_last_lw_tick mode'.
 
-    compare_traces.py                    newest trace file: compare the game played with 60 FPS against the
-                                         replay of it watched later in the same session (paired by the logic
-                                         RNG seed at the first logic tick, which a replay reproduces)
+    compare_traces.py                    newest trace file: find a game played with 60 FPS and a game that starts
+                                         from the same logic RNG seed at 30 FPS in the same session - the replay
+                                         of a skirmish, or the same save loaded again - and compare them
     compare_traces.py TRACE              same, for the given file
     compare_traces.py TRACE_A TRACE_B    compare the longest game of each file
 
 PASS means: every logic tick both games reached has the same logic RNG state and the same engine sync CRC
-(GameLogic::getCRC), i.e. 60 FPS mode did not change the game's logic.
+(GameLogic::getCRC), and every Living World tick both reached has the same seeds, LW view state and object
+transforms, i.e. 60 FPS mode did not change the game's logic.
 """
 import glob
 import os
@@ -19,40 +22,56 @@ import sys
 DATA = os.path.join(os.environ.get('APPDATA', ''), 'Age of the Ring', 'aotr60')
 
 
+class Game:
+    def __init__(self):
+        self.logic = []  # (frame, sub, seed, crc, mode)
+        self.lw = []     # (lw_frame, seed_in, seed_out, view_hash, objects_hash, a_renders, mode)
+
+
 def segments(path):
-    segs, cur = [], []
+    games, cur = [], Game()
     with open(path, encoding='ascii', errors='replace') as f:
         for line in f:
             if line.startswith('# reset'):
-                if cur:
-                    segs.append(cur)
-                cur = []
+                if cur.logic or cur.lw:
+                    games.append(cur)
+                cur = Game()
+                continue
+            if line.startswith('# LW '):
+                lw_frame, seed_in, seed_out, view, objs, renders, mode = line.split()[2:]
+                cur.lw.append((int(lw_frame), seed_in, seed_out, view, objs, int(renders), int(mode)))
                 continue
             if line.startswith('#') or not line.strip():
                 continue
             frame, sub, seed, crc, mode = line.split()
-            cur.append((int(frame), int(sub), seed, crc, int(mode)))
-    if cur:
-        segs.append(cur)
-    return [s for s in segs if len(s) >= 30]
+            cur.logic.append((int(frame), int(sub), seed, crc, int(mode)))
+    if cur.logic or cur.lw:
+        games.append(cur)
+    return [g for g in games if len(g.logic) >= 30]
 
 
-def describe(i, s):
-    m60 = sum(1 for r in s if r[4] == 60)
-    return (f'game {i}: {len(s)} logic calls, frames {s[0][0]}..{s[-1][0]}, '
-            f'{100.0 * m60 / len(s):.0f}% at 60 FPS, first seed {first_seed(s)}')
+def share60(g):
+    return sum(1 for r in g.logic if r[4] == 60) / len(g.logic)
 
 
-def first_seed(s):
-    for r in s:
+def describe(i, g):
+    text = (f'game {i}: {len(g.logic)} logic calls, frames {g.logic[0][0]}..{g.logic[-1][0]}, '
+            f'{100.0 * share60(g):.0f}% at 60 FPS, first seed {first_seed(g)}')
+    if g.lw:
+        text += f', {len(g.lw)} Living World ticks'
+    return text
+
+
+def first_seed(g):
+    for r in g.logic:
         if r[1] == 1:
             return r[2]
-    return s[0][2]
+    return g.logic[0][2]
 
 
-def compare(a, b):
-    ka = {(r[0], r[1]): r for r in a}
-    kb = {(r[0], r[1]): r for r in b}
+def compare_logic(a, b):
+    ka = {(r[0], r[1]): r for r in a.logic}
+    kb = {(r[0], r[1]): r for r in b.logic}
     common = [key for key in kb if key in ka]
     if not common:
         print('FAIL: the two games share no logic frames')
@@ -73,10 +92,45 @@ def compare(a, b):
     return 0
 
 
+def compare_lw(a, b):
+    if not a.lw and not b.lw:
+        return 0
+    for name, g in (('first', a), ('second', b)):
+        odd = [r for r in g.lw[1:] if r[5] != 6]
+        if odd:
+            print(f'WARN: {name} game: {len(odd)} Living World ticks not 6 A-renders apart '
+                  f'(first at LW frame {odd[0][0]}: {odd[0][5]})')
+    ka = {r[0]: r for r in a.lw}
+    kb = {r[0]: r for r in b.lw}
+    common = sorted(key for key in kb if key in ka)
+    if not common:
+        print('FAIL: the two games share no Living World ticks')
+        return 1
+    fields = ('seed in', 'seed out', 'view state', 'object transforms')
+    bad = []
+    for key in common:
+        ra, rb = ka[key], kb[key]
+        diff = [fields[i] for i in range(4) if ra[1 + i] != rb[1 + i]]
+        if diff:
+            bad.append((key, diff))
+    print(f'compared {len(common)} Living World ticks (LW frames {common[0]}..{common[-1]})')
+    if bad:
+        key, diff = bad[0]
+        print(f'FAIL: {len(bad)} Living World mismatches; first at LW frame {key}: {", ".join(diff)}')
+        return 1
+    print('PASS: identical Living World seeds, view state and object transforms on every common LW tick')
+    return 0
+
+
+def compare(a, b):
+    result = compare_logic(a, b)
+    return compare_lw(a, b) or result
+
+
 def main(argv):
     if len(argv) > 2:
-        a = max(segments(argv[1]), key=len, default=None)
-        b = max(segments(argv[2]), key=len, default=None)
+        a = max(segments(argv[1]), key=lambda g: len(g.logic), default=None)
+        b = max(segments(argv[2]), key=lambda g: len(g.logic), default=None)
         if not a or not b:
             print('FAIL: no game found in one of the traces')
             return 1
@@ -87,16 +141,17 @@ def main(argv):
         print(f'no trace found in {DATA} (set Telemetry = 2 in aotr60.ini and play)')
         return 1
     print(f'trace: {path}')
-    segs = segments(path)
-    for i, s in enumerate(segs):
-        print('  ' + describe(i, s))
-    played = [i for i, s in enumerate(segs) if any(r[4] == 60 for r in s)]
-    for i in played:
-        for j in range(i + 1, len(segs)):
-            if first_seed(segs[j]) == first_seed(segs[i]):
-                print(f'pair: game {i} (played at 60 FPS) vs game {j} (its replay)')
-                return compare(segs[i], segs[j])
-    print('FAIL: no game played at 60 FPS followed by its replay in this trace')
+    games = segments(path)
+    for i, g in enumerate(games):
+        print('  ' + describe(i, g))
+    for i, g in enumerate(games):
+        if share60(g) < 0.5:
+            continue
+        for j, h in enumerate(games):
+            if j != i and share60(h) < 0.5 and first_seed(h) == first_seed(g):
+                print(f'pair: game {i} (60 FPS) vs game {j} (30 FPS, same starting seed)')
+                return compare(g, h)
+    print('FAIL: no game played at 60 FPS with a 30 FPS game from the same starting seed in this trace')
     return 1
 
 

@@ -35,6 +35,7 @@ add_library(aotr60_runtime STATIC
     src/frame_ctl.cpp
     src/installer.cpp
     src/log.cpp
+    src/lw_present.cpp
     src/pacer.cpp
     src/paths.cpp
     src/runtime.cpp

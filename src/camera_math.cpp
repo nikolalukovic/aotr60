@@ -67,8 +67,9 @@ bool ExtentChanged(float a, float b, float limit)
 bool InterpolateCameraHalfway(const CameraPose& a, const CameraPose& b, CameraPose* out,
                               const CameraCutLimits& limits)
 {
-    // Aspect, near and far must be identical.
-    if (std::memcmp(&a.vp[4], &b.vp[4], 3 * sizeof(float)) != 0) {
+    // Aspect, near and far must be identical (far may differ with allowFarChange).
+    int fixedCount = limits.allowFarChange ? 2 : 3;
+    if (std::memcmp(&a.vp[4], &b.vp[4], fixedCount * sizeof(float)) != 0) {
         return false;
     }
     for (int i = 0; i < 4; ++i) {
@@ -109,6 +110,9 @@ bool InterpolateCameraHalfway(const CameraPose& a, const CameraPose& b, CameraPo
     }
     for (int i = 4; i < 7; ++i) {
         p.vp[i] = b.vp[i];
+    }
+    if (limits.allowFarChange && a.vp[6] > b.vp[6]) {
+        p.vp[6] = a.vp[6];
     }
     *out = p;
     return true;

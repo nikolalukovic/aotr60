@@ -112,7 +112,6 @@ Units and camera therefore share the same constant 16.7 ms display delay and nev
 - the draw (W3DDisplay::draw `0x44B788` → drawFrame `0x449CF8`; camera handling per §1.6);
 - deferred D3D queue `0x532D6F`;
 - GC vt90 (deferred delete);
-- input lock `0x80000F`;
 - **message propagation `0x7128C3`** (empty on B-renders; on A-renders it acknowledges camera message 0x452 in the same render, as stock);
 - snow `0x4943E1`: it consumes the W3D sync delta, and only its counters `0x49448D`/`0x494494` are A-only.
 
@@ -263,10 +262,14 @@ Nothing is ever doubled, so this is always exact. Switching flushes owed sync, t
 - `Enabled`, known build (§7), not delayfix;
 - singletons non-null;
 - `TheNetwork [0xDE4468]==NULL`;
-- `GL+0x110 ∈ {0 campaign/LW campaign battle, 2 skirmish/War-of-the-Ring battle, 6 tutorial}`;
+- `GL+0x110 ∈ {0 campaign/LW campaign battle, 2 skirmish/War-of-the-Ring battle, 6 tutorial}`, or (phase 6) the
+  Living World map: mode 8, LW logic `[0xDE4950]+0xB4/+0xB5` set, LW view `[0xDE4958]+0x18` set and `+0x19` clear,
+  no fade (`+0x14` 2/3), no battle-transition flags (`view+0x24/+0x25`, `LWL+0x176/+0x177`), empty UI-sequence queue
+  `[0xDE8900]`; `LivingWorldMap=1`;
 - `GL+0x114 ∉ {1,2}`;
 - `GL+0x9D==0`;
-- `GL+0x125==0` (not on the LW strategic map until phase 6);
+- `GL+0x125` set, or the LW view active, only together with mode 8 (GL+0x125 alone is not a reliable map flag: the
+  battle-return handler's GameLogic::reset clears it while the map stays shown);
 - not replay playback (`[0xDE7CD8]+0x1C != 1`);
 - `GD+0xBBD==0`, `GD+0xD45==0` (Create-a-Hero), not in the intro (`GD+0xAF2/0xAF3`), `GD+0x26` (UseFPSLimit) set;
 - `[0xDE3B98]==NULL` (no script-debugger DLL);
@@ -396,10 +399,16 @@ New integrators go A-only. **Check:** the sweep report is committed.
 
 **5. Verification and hardening.** The full §4 matrix on your display, fallback tuning, your playtest checklist.
 
-**6. Living World strategic map at 60.**
-- Audit the LW view tail (`0x49AB21`/`0x49AB3E`), moveTo `0x6BF78E`/`0x6BFB88`, `0x645750`, the LW draw `0x49B618` and the embedded APT window.
-- Apply the same A-only-step + presentation pattern.
-- **Check:** identical logic-RNG traces per LW tick; each LW manager/eye-tower/Palantir call at 30.3/s.
+**6. Living World strategic map at 60.** (implemented; see sites.json group note "Living World strategic map (phase 6)")
+- Every LW client stepper (LW view vt6C: zoom, fades, army mover `0x6C038B`, camera fly `0x6BF78E`; translators;
+  `0x645750`) stays A-only: LW logic reads its results, so nothing is half-stepped.
+- The LW draw `0x49B618` is stateless per render, so B-renders redraw stock render k. A-renders present the LW camera
+  (W3D camera matrix swap, no shadow refit, far plane free to follow the zoom) and the moved LW objects (render-object
+  transforms, restored exactly after the scene) halfway between the last two A-renders.
+- The UI-sequence runner `0x80000F` becomes A-only (GATE_CU_UISEQ); before, the LW battle exit ran clearGameData and
+  the engine reset inside a B-render.
+- **Check:** identical `# LW` trace lines (seeds, view state, object transforms) per LW tick at 30 and 60 for the same
+  save; 6 A-renders per LW tick; lwBMismatch and lwIconRestoreBad stay 0.
 
 **7. Optional (separate approval).**
 - delayfix: 5 A/B pairs = 10 renders per 165 ms tick, isTick at s==2.

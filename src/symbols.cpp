@@ -103,6 +103,11 @@ void CAVE_SAIL_SLEW();
 void CAVE_TURRET_FRAC();
 void STUB_FLOOR_FADE();
 void STUB_TERRAIN_OFU();
+void Gate_CU_UISEQ();
+void STUB_LW_ICON_SNAP();
+void STUB_LW_SCENE_PRESENT();
+void STUB_LW6_CAM_REC();
+void STUB_LW6_CAM_SCENE_END();
 }
 
 namespace {
@@ -118,6 +123,7 @@ const Symbol kSymbols[] = {
     SYM(RESET_CAVE),
     SYM(C4_KEY_STUB),
     SYM(LogicUpdateWrapper),
+    SYM(LwLogicUpdateWrapper),
     // render-internal integrators
     SYM(STUB_INC_DD1BEC),
     SYM(STUB_INC_DD1A40),
@@ -232,6 +238,12 @@ const Symbol kSymbols[] = {
     SYM(CAVE_TURRET_FRAC),
     SYM(STUB_FLOOR_FADE),
     SYM(STUB_TERRAIN_OFU),
+    // phase 6: Living World strategic map
+    SYM(Gate_CU_UISEQ),
+    SYM(STUB_LW_ICON_SNAP),
+    SYM(STUB_LW_SCENE_PRESENT),
+    SYM(STUB_LW6_CAM_REC),
+    SYM(STUB_LW6_CAM_SCENE_END),
 };
 
 #undef SYM

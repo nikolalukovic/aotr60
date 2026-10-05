@@ -61,6 +61,10 @@ extern volatile uint8_t g_lp4b;       // phase 4b LightPulse half-steps (session
 extern volatile uint8_t g_uiPart4b;   // phase 4b UI particle half-steps (session constant)
 extern volatile uint8_t g_wanim4b;    // phase 4b world-anim rise half-steps (session constant)
 extern volatile uint32_t g_radarAFrame; // m_frame of the last radar overlay refresh test outside B-renders
+extern volatile uint32_t g_uiSeqLast;   // flags the UI-sequence runner 0x80000F returned to the last 60-mode A-render
+
+// ---- Living World strategic map (phase 6) ----
+extern volatile uint32_t g_lwRestoreN;  // LW objects currently shown at their halfway transform (LwPresentOpen)
 
 // ---- telemetry / anomalies ----
 extern volatile uint32_t g_siteRun[sites::kSiteCount];
@@ -87,6 +91,12 @@ void __cdecl SceneRestore();
 void __cdecl CamSwapEndGuard();
 bool __fastcall C5_CalcPhysicsXform(uint8_t* drawable, void* edx, float* out);
 uint32_t __fastcall LogicUpdateWrapper(uint8_t* logic, void* edx, int sub);
+void __fastcall LwLogicUpdateWrapper(uint8_t* lwLogic, void* edx);
+void __cdecl LwIconSnapshot(uint8_t* view);
+void __cdecl LwPresentOpen();
+void __cdecl LwPresentClose();
+void __cdecl LwCamAfterBuild(uint8_t* view);
+void __cdecl LwCamSceneEnd();
 
 // Assembly-side trampoline of the C5 detour (thiscall, same contract as 0x67BDC0).
 void C5_Tramp();
@@ -115,6 +125,9 @@ constexpr uintptr_t kNetSpeedMultiplier = 0xD9F498;
 constexpr uintptr_t kTerrainVisual = 0xDC78EC;
 constexpr uintptr_t kShadowManager = 0xDC7A38;
 constexpr uintptr_t kCameraShaker = 0xDC78D4;
+constexpr uintptr_t kLwView = 0xDE4958;          // Living World client/view (vtbl 0xBDE918)
+constexpr uintptr_t kLwLogic = 0xDE4950;         // TheLivingWorldLogic
+constexpr uintptr_t kUiSequenceQueue = 0xDE8900; // head of the UI-sequence step queue run by 0x80000F
 
 constexpr uint32_t kFnShadowRefit = 0x47D37D;   // thiscall(ShadowManager*, CameraClass*)
 constexpr uint32_t kFnShakeActive = 0x4655DD;   // thiscall(shaker) -> AL
@@ -157,6 +170,29 @@ void SetIntegratorVariablesForB(bool bRender); // B-render values vs stock value
 // camera.cpp
 void CamSwapEnd();      // restore the real camera if a swap is active (main thread)
 void CameraReset();     // forget the camera history (mode switches, resets)
+
+// Living World strategic map presentation counters (camera.cpp, lw_present.cpp).
+struct LwStats {
+    uint32_t aSwaps = 0;        // A-render LW scene drawn with the halfway camera
+    uint32_t aNoHistory = 0;
+    uint32_t aCuts = 0;
+    uint32_t swapEnds = 0;
+    uint32_t bExact = 0;        // B-render rebuilt exactly the A-render's camera (expected)
+    uint32_t bMismatch = 0;     // expected 0
+    uint32_t bNoRecord = 0;
+    uint32_t iconSnapshots = 0;
+    uint32_t iconPresented = 0; // objects drawn at a halfway transform
+    uint32_t iconFar = 0;       // moved more than the cutoff: drawn as is
+    uint32_t iconRestoreBad = 0; // restore did not reproduce the exact transform (expected 0)
+    uint32_t iconLateCloses = 0; // restored by the drawFrame exit backstop (expected 0)
+    uint32_t iconOverflow = 0;
+};
+extern LwStats g_lwStats;
+
+// lw_present.cpp
+bool LwSceneShown();          // drawFrame draws the LW scene (LW view active and not suspended)
+void LwPresentReset();        // forget the snapshot (mode switches, resets)
+uint32_t LwIconHash();        // order-independent hash of every LW object transform (telemetry)
 
 // c5_physics.cpp
 void C5Reset();

@@ -12,11 +12,14 @@ struct CameraCutLimits {
     float maxDistance = 1500.0f; // world units between the two poses (fast pans stay smooth; minimap jumps cut)
     float maxAngleDeg = 45.0f;   // rotation between the two poses
     float maxExtentChange = 0.05f;
+    // Living World map: the far plane follows the zoom (zfar = 1.5 * distance + 2000, 0x49B597), so it may differ;
+    // the halfway pose keeps the larger one. Aspect and near must still be identical.
+    bool allowFarChange = false;
 };
 
 // Halfway pose between a and b: rotation slerp(½), translation and view-plane extents averaged, aspect/near/far
-// from b. Returns false (out untouched) on a cut: too far, too much rotation, a changed aspect/near/far or a view
-// plane extent that changed by more than the limit.
+// from b (far: the larger of the two with allowFarChange). Returns false (out untouched) on a cut: too far, too much
+// rotation, a changed aspect/near/far or a view plane extent that changed by more than the limit.
 bool InterpolateCameraHalfway(const CameraPose& a, const CameraPose& b, CameraPose* out,
                               const CameraCutLimits& limits = {});
 

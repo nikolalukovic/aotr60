@@ -6,7 +6,7 @@
 const char kDefaultConfigText[] =
     "; AotR60 settings. Delete this file to restore the defaults.\n"
     "\n"
-    "; 1 = render at 60 FPS in campaign, Living World battles, skirmish and tutorials.\n"
+    "; 1 = render at 60 FPS in campaign, Living World (map and battles), skirmish and tutorials.\n"
     "; 0 = stock 30 FPS (the DLL only forwards DirectInput).\n"
     "Enabled = 1\n"
     "\n"
@@ -25,9 +25,11 @@ const char kDefaultConfigText[] =
     "UnitInterpolation = 1\n"
     "CameraInterpolation = 1\n"
     "\n"
+    "; 1 = 60 FPS on the Living World strategic map as well; 0 = the map stays at 30 FPS (battles are not affected).\n"
+    "LivingWorldMap = 1\n"
+    "\n"
     "; Not supported yet; keep at 0.\n"
-    "AllowDelayfix = 0\n"
-    "AllowLivingWorldMap = 0\n";
+    "AllowDelayfix = 0\n";
 
 namespace {
 
@@ -107,8 +109,8 @@ Config ParseConfig(std::string_view text, std::string* warnings)
         else if (EqualsNoCase(key, "AllowDelayfix")) {
             ok = ParseBool(value, cfg.allowDelayfix);
         }
-        else if (EqualsNoCase(key, "AllowLivingWorldMap")) {
-            ok = ParseBool(value, cfg.allowLivingWorldMap);
+        else if (EqualsNoCase(key, "LivingWorldMap")) {
+            ok = ParseBool(value, cfg.livingWorldMap);
         }
         else if (EqualsNoCase(key, "UnitInterpolation")) {
             ok = ParseBool(value, cfg.unitInterpolation);

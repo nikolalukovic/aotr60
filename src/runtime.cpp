@@ -53,6 +53,7 @@ volatile uint8_t g_lp4b = 0;
 volatile uint8_t g_uiPart4b = 0;
 volatile uint8_t g_wanim4b = 0;
 volatile uint32_t g_radarAFrame = 0xFFFFFFFFu;
+volatile uint32_t g_uiSeqLast = 0;
 
 volatile uint32_t g_siteRun[sites::kSiteCount] = {};
 volatile uint32_t g_siteSkip[sites::kSiteCount] = {};

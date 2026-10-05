@@ -1279,19 +1279,25 @@ CAVE_WANIM_RISE ENDP
 ; UI_PBCLOCK_* 'mov byte [esi],0 / call winSetUserData(esi)' after a push button drew its progress clock.
 ; The clock request is armed by ControlBar::update (A-only, after the draw). A B-render keeps it, so both renders
 ; of a pair show the clock and the next A-render consumes it exactly like stock render k+1.
-STUB_PB_CLOCK_KEEP_B PROC
+PBCLOCK_STUB MACRO name, idx
+name PROC
     cmp byte ptr [g_skipB], 0
     je clear
     IS_MAIN_KEEP_EAX
     je keep
 clear:
-    RUNCNT IDX_UI_PBCLOCK_IMAGE
+    RUNCNT idx
     mov byte ptr [esi], 0
     jmp dword ptr [T_97D69E]            ; winSetUserData: ret 4 pops the pushed ESI, returns to site+5
 keep:
-    SKIPCNT IDX_UI_PBCLOCK_IMAGE
+    SKIPCNT idx
     jmp dword ptr [T_97D69E]
-STUB_PB_CLOCK_KEEP_B ENDP
+name ENDP
+ENDM
+
+PBCLOCK_STUB STUB_PB_CLOCK_KEEP_B,        IDX_UI_PBCLOCK_IMAGE
+PBCLOCK_STUB STUB_PB_CLOCK_KEEP_B_PLAIN,  IDX_UI_PBCLOCK_PLAIN
+PBCLOCK_STUB STUB_PB_CLOCK_KEEP_B_RADIAL, IDX_UI_PBCLOCK_RADIAL
 
 ; UI_TOOLTIP_LINGER 0x5EE9A3 'lea eax,[esi+0x1304] / dec dword [eax]' (tooltip hide grace, per draw).
 CAVE_TOOLTIP_LINGER PROC

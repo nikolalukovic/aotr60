@@ -4407,7 +4407,7 @@
     "0x4A5094: e8 05 86 4d 00  call 0x97d69e            ; winSetUserData(ESI); ECX=EDI (window) set at 0x4A508F, ESI pushed at 0x4A508E"
    ],
    "kind": "call_gate",
-   "replacement_hex": "e8 <rel32:STUB_PB_CLOCK_KEEP_B> 90 90 90",
+   "replacement_hex": "e8 <rel32:STUB_PB_CLOCK_KEEP_B_PLAIN> 90 90 90",
    "stub": "STUB_PB_CLOCK_KEEP_B (shared, see UI_PBCLOCK_IMAGE). Same entry contract: ECX = window, ESI = PushButtonData*, [esp+4] = ESI. B-render (main thread): skip 'mov byte [esi],0'; always tail-jump to 0x97D69E which returns to 0x4A5099-3 (NOPs).",
    "resume_address": "0x4A5099",
    "live_after": "ESI = PushButtonData* (cmp [esi+0x28] at 0x4A5099, push esi at 0x4A509F, cmp [esi+0xC]); EDI = window (push edi at 0x4A50A3); [ebp+0xC] instData; EBX callee-saved; EBP frame/locals [ebp-0x8..-0x14]. EAX/ECX/EDX dead. EFLAGS dead (cmp at 0x4A5099). x87 depth 0. No XMM live.",
@@ -4449,7 +4449,7 @@
     "0x4A5797: e8 02 7f 4d 00  call 0x97d69e            ; winSetUserData(ESI); ECX=EDI (window) set at 0x4A5792, ESI pushed at 0x4A5791"
    ],
    "kind": "call_gate",
-   "replacement_hex": "e8 <rel32:STUB_PB_CLOCK_KEEP_B> 90 90 90",
+   "replacement_hex": "e8 <rel32:STUB_PB_CLOCK_KEEP_B_RADIAL> 90 90 90",
    "stub": "STUB_PB_CLOCK_KEEP_B (shared, see UI_PBCLOCK_IMAGE). Same entry contract: ECX = window, ESI = PushButtonData*, [esp+4] = ESI. B-render (main thread): skip the clear; always tail-jump to 0x97D69E, which returns to 0x4A5799 (NOPs) -> 0x4A579C.",
    "resume_address": "0x4A579C",
    "live_after": "ESI = PushButtonData* (cmp [esi+0xC] 0x4A57A2, [esi+0x10], cmp [esi+0x28] 0x4A5802, push esi 0x4A5808); EDI = window (push edi 0x4A580C, mov ecx,edi 0x4A5815); EBX callee-saved; [ebp-0xD] (clock/selected flag), [ebp+0xC] instData, rect locals [ebp-0x20..-0x2C]. EAX/ECX/EDX dead. EFLAGS dead (cmp [ebp-0xD] at 0x4A579C). x87 depth 0 (the fld/fstp pairs of the type-2 path are balanced before 0x4A578C). No XMM live.",

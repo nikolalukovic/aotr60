@@ -48,7 +48,8 @@ bool LodNeutral()
 // PresentationInterval +0x34). Applies to windowed mode too (DWM / DXVK FIFO).
 // Evaluated only when those parameters change (device creation, reset, mode switch), never periodically: this runs
 // on the game thread before every render, and display queries made there while the game was fullscreen coincided
-// with a hitch about once a second. Fullscreen takes the refresh rate from the present parameters (no OS call).
+// with a hitch about once a second. A nonzero FullScreen_RefreshRateInHz is used as is (the engine leaves it 0, so
+// in practice the OS is queried once per parameter change).
 const char* DisplayBlockReason()
 {
     struct Signature {

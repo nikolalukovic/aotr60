@@ -482,12 +482,13 @@ void TelemetryOnPreRender(int stepperS)
 void TelemetryOnModeChange(bool on, const char* reason)
 {
     Log("mode: %s (%s) at render %u, m_frame %u", on ? "60 FPS on" : "60 FPS off", reason, g_renderId, MFrame());
-    // The engine's D3DPRESENT_PARAMETERS (0xDD2FF8): back buffer, Windowed +0x20, refresh +0x30, interval +0x34.
+    // The engine's D3DPRESENT_PARAMETERS (0xDD2FF8): back buffer, Windowed +0x20, interval +0x34 (the refresh rate
+    // is logged by the display check in frame_ctl.cpp).
     if (on) {
         uint32_t interval = Read<uint32_t>(0xDD302C);
-        Log("display: %ux%u, %s, refresh %u Hz, presentation interval 0x%X (%s)", Read<uint32_t>(0xDD2FF8),
-            Read<uint32_t>(0xDD2FFC), Read<uint32_t>(0xDD3018) ? "windowed" : "fullscreen", Read<uint32_t>(0xDD3028),
-            interval, interval == 0x80000000u ? "immediate, no vsync" : "vsync");
+        Log("display: %ux%u, %s, presentation interval 0x%X (%s)", Read<uint32_t>(0xDD2FF8), Read<uint32_t>(0xDD2FFC),
+            Read<uint32_t>(0xDD3018) ? "windowed" : "fullscreen", interval,
+            interval == 0x80000000u ? "immediate, no vsync" : "vsync");
     }
     g_w.broken = true;
 }

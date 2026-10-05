@@ -29,5 +29,6 @@ struct CameraStats {
     uint32_t aCuts = 0;
     uint32_t guardEnds = 0;
     uint32_t aShakerFar = 0; // shaker list non-empty but out of range (formerly blocked interpolation)
+    uint32_t aShakeHeld = 0; // interpolated through a shake (base camera interpolated, stock shake re-applied)
 };
 extern CameraStats g_cameraStats;

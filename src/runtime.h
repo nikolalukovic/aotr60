@@ -81,7 +81,7 @@ uint32_t __cdecl AotR60_Pacer(uint8_t* engine);
 int __cdecl AotR60_PresentSkip();
 void __cdecl AotR60_PresentDone();
 void __cdecl CamSwapToMk_B(uint8_t* viewB4);
-void __cdecl S2_RecordMkAndOpen(uint8_t* viewB4);
+void __cdecl S2_RecordMkAndOpen(uint8_t* viewB4, uint32_t rebuilt);
 void __cdecl SceneOpen_A();
 void __cdecl SceneRestore();
 void __cdecl CamSwapEndGuard();

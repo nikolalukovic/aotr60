@@ -25,6 +25,12 @@ struct CamRec {
     uint32_t renderId;
     bool shake;
     bool valid;
+    // Shake hold: the legacy view shake (W3DView::shake) is a pure XY offset of the look-at point and the
+    // CameraShakerSystem a pure rotation, so the base camera can be interpolated and stock render k's shake
+    // re-applied on top.
+    float shakeOff[2];  // effective legacy shake offset in the recorded transform
+    bool shakerRot;     // a shaker reaches the eye (rotation-only shake)
+    bool shakeHoldOk;   // the recorded transform is a plain look-at camera rebuilt this update
 };
 
 struct SwapSave {
@@ -176,8 +182,14 @@ extern "C" void __cdecl CamSwapToMk_B(uint8_t* viewB4)
     ++g_cameraStats.bSwaps;
 }
 
+float Clamp(float v, float lo, float hi)
+{
+    return v < lo ? lo : (v > hi ? hi : v);
+}
+
 // S2, A-render: record M_k, then (phase 2b) open the drawable-pass presentation window.
-extern "C" void __cdecl S2_RecordMkAndOpen(uint8_t* viewB4)
+// `rebuilt` is W3DView::update's local [ebp-0xD]: the camera transform was rebuilt in this update (0x48C6E2).
+extern "C" void __cdecl S2_RecordMkAndOpen(uint8_t* viewB4, uint32_t rebuilt)
 {
     uint8_t* cam = *reinterpret_cast<uint8_t**>(viewB4 + 0x50);
     if (!cam || cam != TacticalCamera()) {
@@ -191,19 +203,39 @@ extern "C" void __cdecl S2_RecordMkAndOpen(uint8_t* viewB4)
     std::memcpy(r.xf, cam + kCamTransform, 48);
     std::memcpy(r.vp, cam + kCamViewPlane, 28);
     r.renderId = g_renderId;
-    bool shake = Field<float>(viewB4, 0x64) != 0.0f || Field<float>(viewB4, 0x68) != 0.0f ||
-                 Field<float>(viewB4, 0x74) > 0.01f;
-    if (!shake) {
-        shake = ShakerReachesEye(r.xf);
-        if (!shake) {
-            if (uint8_t* shaker = Ptr(kCameraShaker)) {
-                if (reinterpret_cast<ShakeActiveFn>(kFnShakeActive)(shaker)) {
-                    ++g_cameraStats.aShakerFar; // a shaker exists but does not reach the camera: keep interpolating
-                }
+    // Legacy view shake: offsets view+0x118/+0x11C (viewB4+0x64/+0x68, intensity +0x74, 0x48C0E3..0x48C16E) are
+    // added to the look-at position (0x502936..0x502950); with the camera-bounds clamp on (byte view+0x241C) the
+    // effective offset is the clamped difference.
+    float off[2] = {Field<float>(viewB4, 0x64), Field<float>(viewB4, 0x68)};
+    bool viewShake = off[0] != 0.0f || off[1] != 0.0f || Field<float>(viewB4, 0x74) > 0.01f;
+    if (Field<uint8_t>(viewB4, 0x2368)) {
+        float pos[2] = {Field<float>(viewB4 - 0xA8, 0), Field<float>(viewB4 - 0xA4, 0)}; // view+0xC/+0x10
+        float lo[2] = {Field<float>(viewB4, 0x2358), Field<float>(viewB4, 0x235C)};
+        float hi[2] = {Field<float>(viewB4, 0x2360), Field<float>(viewB4, 0x2364)};
+        for (int i = 0; i < 2; ++i) {
+            r.shakeOff[i] = Clamp(pos[i] + off[i], lo[i], hi[i]) - Clamp(pos[i], lo[i], hi[i]);
+        }
+    }
+    else {
+        r.shakeOff[0] = off[0];
+        r.shakeOff[1] = off[1];
+    }
+    r.shakerRot = ShakerReachesEye(r.xf);
+    if (!viewShake && !r.shakerRot) {
+        if (uint8_t* shaker = Ptr(kCameraShaker)) {
+            if (reinterpret_cast<ShakeActiveFn>(kFnShakeActive)(shaker)) {
+                ++g_cameraStats.aShakerFar; // a shaker exists but does not reach the camera: keep interpolating
             }
         }
     }
-    r.shake = shake;
+    r.shake = viewShake || r.shakerRot;
+    // The hold is exact only for a plain look-at camera whose transform was rebuilt from the current offsets in
+    // this update: no scripted camera mode 2/3/4 (view+0x2354), no look-at override (+0x23C8), no object lock
+    // (+0x1DC), no one-shot eye placement (+0x2438).
+    uint32_t mode = Field<uint32_t>(viewB4, 0x22A0);
+    r.shakeHoldOk = mode != 2 && mode != 3 && mode != 4 && !Field<uint8_t>(viewB4, 0x2314) &&
+                    !Field<uint8_t>(viewB4, 0x128) && !Field<uint8_t>(viewB4, 0x2384) &&
+                    (!r.shake || rebuilt || Field<uint8_t>(viewB4, 0x2385));
     r.valid = true;
     OpenWindow(g_pw1Open);
 }
@@ -227,7 +259,8 @@ extern "C" void __cdecl SceneOpen_A()
         ++g_cameraStats.aNoHistory;
         return;
     }
-    if (r0.shake || r1.shake) {
+    bool shaking = r0.shake || r1.shake;
+    if (shaking && !(r0.shakeHoldOk && r1.shakeHoldOk)) {
         ++g_cameraStats.aShake;
         return;
     }
@@ -240,10 +273,27 @@ extern "C" void __cdecl SceneOpen_A()
     std::memcpy(p0.vp, r0.vp, 28);
     std::memcpy(p1.xf, r1.xf, 48);
     std::memcpy(p1.vp, r1.vp, 28);
+    if (shaking) {
+        // Interpolate the unshaken base cameras, then apply stock render k's shake.
+        p0.xf[3] -= r0.shakeOff[0];
+        p0.xf[7] -= r0.shakeOff[1];
+        p1.xf[3] -= r1.shakeOff[0];
+        p1.xf[7] -= r1.shakeOff[1];
+    }
     CameraPose mid;
     if (!InterpolateCameraHalfway(p0, p1, &mid)) {
         ++g_cameraStats.aCuts;
         return;
+    }
+    if (shaking) {
+        mid.xf[3] += r1.shakeOff[0];
+        mid.xf[7] += r1.shakeOff[1];
+        if (r0.shakerRot || r1.shakerRot) {
+            for (int row = 0; row < 3; ++row) {
+                std::memcpy(&mid.xf[4 * row], &r1.xf[4 * row], 3 * sizeof(float)); // M_k rotation, shaker included
+            }
+        }
+        ++g_cameraStats.aShakeHeld;
     }
     // The current camera is C_k' (after input); only the scene shows the halfway picture.
     BeginSwap(cam, mid.xf, reinterpret_cast<const uint32_t*>(mid.vp));

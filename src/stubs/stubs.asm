@@ -898,9 +898,11 @@ CAVE_S2 PROC
     IS_MAIN_KEEP_EAX
     jne stock
     SAVE_ALL
+    movzx eax, byte ptr [ebp - 0Dh]     ; W3DView::update: camera transform rebuilt in this update
+    push eax
     push ebx
-    call S2_RecordMkAndOpen             ; cdecl(view+0xB4)
-    add esp, 4
+    call S2_RecordMkAndOpen             ; cdecl(view+0xB4, rebuilt)
+    add esp, 8
     RESTORE_ALL
 stock:
     mov eax, ds:[0DD1E0Ch]

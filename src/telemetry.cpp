@@ -334,11 +334,13 @@ void TelemetryOnPreRender(int stepperS)
     if (g_cfg.telemetry >= 1 && now - g_lastSummary >= 120 * g_freq) {
         LogSiteSummary();
         Log("telemetry: %llu tick checks, %llu errors; seed changes outside logic: %llu (%llu in 60 mode); "
-            "C5 replays %u suppressed %u drops %u; camera B-swaps %u no-record %u A-swaps %u guard-ends %u",
+            "C5 replays %u suppressed %u drops %u; camera B-swaps %u no-record %u A-swaps %u guard-ends %u "
+            "shake-held %u shake-paused %u cuts %u",
             static_cast<unsigned long long>(g_t.tickChecks), static_cast<unsigned long long>(g_t.tickErrors),
             static_cast<unsigned long long>(g_t.seedOutside), static_cast<unsigned long long>(g_t.seedOutside60),
             g_c5Stats.replays, g_c5Stats.suppressed, g_c5Stats.drops, g_cameraStats.bSwaps, g_cameraStats.bNoRecord,
-            g_cameraStats.aSwaps, g_cameraStats.guardEnds);
+            g_cameraStats.aSwaps, g_cameraStats.guardEnds, g_cameraStats.aShakeHeld, g_cameraStats.aShake,
+            g_cameraStats.aCuts);
         g_lastSummary = now;
     }
 }

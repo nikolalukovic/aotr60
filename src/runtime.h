@@ -90,7 +90,7 @@ void __cdecl S2_RecordMkAndOpen(uint8_t* viewB4, uint32_t rebuilt);
 void __cdecl SceneOpen_A();
 void __cdecl SceneRestore();
 void __cdecl CamSwapEndGuard();
-float __cdecl ScrollZoomFactor(const uint8_t* view);
+float __cdecl ScrollZoomFactor(const uint8_t* view, const float* delta, const uint8_t* frame, float scalar);
 bool __fastcall C5_CalcPhysicsXform(uint8_t* drawable, void* edx, float* out);
 uint32_t __fastcall LogicUpdateWrapper(uint8_t* logic, void* edx, int sub);
 void __fastcall LwLogicUpdateWrapper(uint8_t* lwLogic, void* edx);
@@ -173,7 +173,7 @@ void SetIntegratorVariablesForB(bool bRender); // B-render values vs stock value
 // camera.cpp
 void CamSwapEnd();      // restore the real camera if a swap is active (main thread)
 void CameraReset();     // forget the camera history (mode switches, resets)
-void UniformScrollInit(bool on);
+void UniformScrollInit(bool on, bool slope);
 void UniformScrollToggle();
 void UniformScrollOnC0();    // keeps the tactical view's scroll cutoff in line with the switch (main thread)
 void UniformScrollOnReset(); // a new map: capture the reference height again

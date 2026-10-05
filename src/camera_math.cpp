@@ -53,6 +53,24 @@ void ToMatrix(const Quat& q, float* m)
     m[10] = 1.0f - 2.0f * (xx + yy);
 }
 
+struct SlopeEq {
+    HeightSampleFn sample;
+    const void* ctx;
+    float px, py, fx, fy, stepFwd, h0, k;
+
+    // 1 + k * (grid slope over the compensated forward step g*stepFwd)
+    float CRaw(float g) const
+    {
+        float x = g * stepFwd;
+        return 1.0f + k * (sample(ctx, px + fx * x, py + fy * x) - h0) / x;
+    }
+};
+
+float ClampF(float v, float lo, float hi)
+{
+    return v < lo ? lo : (v > hi ? hi : v);
+}
+
 bool ExtentChanged(float a, float b, float limit)
 {
     float scale = std::fabs(a) > std::fabs(b) ? std::fabs(a) : std::fabs(b);
@@ -63,6 +81,64 @@ bool ExtentChanged(float a, float b, float limit)
 }
 
 } // namespace
+
+float SlopeScrollFactor(HeightSampleFn sample, const void* ctx, float px, float py, float fx, float fy, float stepFwd,
+                        float stepRight, const SlopeScrollParams& p)
+{
+    if (!sample || !(std::fabs(stepFwd) > 1e-3f) || !(p.lo > 0.0f) || !(p.hi >= 1.0f) || !(p.lo <= 1.0f)) {
+        return 1.0f; // pure sideways step, bad parameters or NaN
+    }
+    SlopeEq eq{sample, ctx, px, py, fx, fy, stepFwd, sample(ctx, px, py), p.k};
+    if (!(eq.h0 == eq.h0)) {
+        return 1.0f;
+    }
+    const float wf = (p.sinPitch * stepFwd) * (p.sinPitch * stepFwd); // forward image term (screen units)
+    const float wr = stepRight * stepRight;                            // sideways image term
+    auto resid = [&](float g) {
+        float c = ClampF(eq.CRaw(g), p.lo, p.hi);
+        return g * g * (wr + wf * c * c) - (wr + wf);
+    };
+    float a = 1.0f / p.hi;
+    float b = 1.0f / p.lo;
+    float g;
+    float ra = resid(a);
+    float rb = resid(b);
+    if (!(ra == ra) || !(rb == rb)) {
+        return 1.0f;
+    }
+    if (ra >= 0.0f) {
+        g = a;
+    }
+    else if (rb <= 0.0f) {
+        g = b;
+    }
+    else {
+        for (int i = 0; i < p.iterations; ++i) { // the residual is monotonic in g: a single root
+            float m = 0.5f * (a + b);
+            if (resid(m) > 0.0f) {
+                b = m;
+            }
+            else {
+                a = m;
+            }
+        }
+        g = 0.5f * (a + b);
+        float c = ClampF(eq.CRaw(g), p.lo, p.hi);
+        float polished = std::sqrt((wr + wf) / (wr + wf * c * c)); // exact when c is constant (flat -> exactly 1)
+        if (polished >= a - 1e-6f && polished <= b + 1e-6f) {
+            g = polished;
+        }
+    }
+    float cr = eq.CRaw(g);
+    if (!(cr == cr)) {
+        return 1.0f;
+    }
+    if (cr < p.fade) {
+        float t = cr > 0.0f ? cr / p.fade : 0.0f;
+        g = 1.0f + (g - 1.0f) * t;
+    }
+    return g;
+}
 
 bool InterpolateCameraHalfway(const CameraPose& a, const CameraPose& b, CameraPose* out,
                               const CameraCutLimits& limits)

@@ -125,3 +125,68 @@ TEST(uniform_scroll_factor_uses_height_above_ground)
     CHECK(Near(UniformScrollFactor(0.0f, 0.0f, 450.0f, 0.0f), 1.0f / 450.0f));
     CHECK(Near(UniformScrollFactor(5000.0f, 300.0f, 300.0f, 0.0f), 4.0f));          // capped at 4x the max height
 }
+
+namespace {
+
+struct RampY {
+    float y0, y1, h0, h1; // height along y (camera forward = +y): h0 before y0, linear to h1 at y1
+};
+
+float RampHeight(const void* ctx, float, float y)
+{
+    const RampY* r = static_cast<const RampY*>(ctx);
+    if (y <= r->y0) {
+        return r->h0;
+    }
+    if (y >= r->y1) {
+        return r->h1;
+    }
+    return r->h0 + (r->h1 - r->h0) * (y - r->y0) / (r->y1 - r->y0);
+}
+
+float Slope(const RampY& r, float py, float fwd, float right)
+{
+    SlopeScrollParams p; // k = cot(37.5), sin(37.5), lo 0.5, hi 1.4, fade 0.15
+    return SlopeScrollFactor(RampHeight, &r, 0.0f, py, 0.0f, 1.0f, fwd, right, p);
+}
+
+} // namespace
+
+TEST(slope_scroll_factor_flat_and_sideways_unchanged)
+{
+    CHECK(Slope({0, 1000, 0, 0}, 500, 25, 0) == 1.0f);        // flat: exactly 1
+    CHECK(Slope({0, 1000, 300, 0}, 500, 0, 25) == 1.0f);      // sideways along the contour of a 0.3 slope
+    CHECK(Slope({0, 1000, 300, 0}, 500, 0.0f, 0.0f) == 1.0f); // no motion
+}
+
+TEST(slope_scroll_factor_cancels_one_plus_k_s)
+{
+    CHECK(Near(Slope({0, 1000, 300, 0}, 500, 25, 0), 1.641948f, 1e-4f));  // falling away
+    CHECK(Near(Slope({0, 1000, 300, 0}, 500, -25, 0), 1.641948f, 1e-4f)); // back = uphill on the same slope
+    CHECK(Near(Slope({0, 1000, 0, 300}, 500, 25, 0), 0.718924f, 1e-4f));  // facing
+}
+
+TEST(slope_scroll_factor_clamps_and_fades)
+{
+    CHECK(Near(Slope({0, 1000, 450, 0}, 500, 25, 0), 2.0f));               // capped at 2x
+    CHECK(Near(Slope({0, 1000, 600, 0}, 500, 25, 0), 2.0f));
+    CHECK(Near(Slope({0, 1000, 650, 0}, 500, 25, 0), 2.0f));
+    CHECK(Near(Slope({0, 1000, 700, 0}, 500, 25, 0), 1.584948f, 1e-4f));   // nearly as steep as the view ray: fading
+    CHECK(Slope({0, 1000, 1200, 0}, 500, 25, 0) == 1.0f);                  // steeper than the view ray: no boost
+    CHECK(Near(Slope({0, 1000, 0, 600}, 500, 25, 0), 1.0f / 1.4f));        // facing: at most 0.71x
+    CHECK(Near(Slope({0, 1000, 0, 1200}, 500, 25, 0), 1.0f / 1.4f));
+}
+
+TEST(slope_scroll_factor_uses_the_chord_of_the_step)
+{
+    // A step crossing a ramp end counts only the part on the ramp (no overshoot).
+    CHECK(Near(Slope({0, 1000, 300, 0}, 990, 25, 0), 1.156384f, 1e-4f));
+    CHECK(Near(Slope({0, 1000, 600, 0}, 980, 40, 0), 1.390999f, 1e-4f));
+    CHECK(Near(Slope({0, 1000, 0, 600}, -10, 25, 0), 0.736707f, 1e-4f)); // entering a facing ramp
+}
+
+TEST(slope_scroll_factor_diagonal_is_screen_weighted)
+{
+    CHECK(Near(Slope({0, 1000, 300, 0}, 500, 17.68f, 17.68f), 1.097705f, 1e-4f));
+    CHECK(Near(Slope({0, 1000, 0, 600}, 500, 17.68f, 17.68f), 0.891022f, 1e-4f));
+}

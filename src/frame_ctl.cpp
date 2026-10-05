@@ -394,7 +394,7 @@ void FrameControlInit(const Config& cfg, bool installed)
     g_featPresent = cfg.unitInterpolation ? 1 : 0;
     // The interpolated camera only matches units drawn at the same half step (PLAN §1.2).
     g_featCamInterp = (cfg.cameraInterpolation && cfg.unitInterpolation) ? 1 : 0;
-    UniformScrollInit(cfg.uniformScroll);
+    UniformScrollInit(cfg.uniformScroll, cfg.uniformScrollSlope);
     if (cfg.cameraInterpolation && !cfg.unitInterpolation) {
         Log("config: CameraInterpolation ignored without UnitInterpolation");
     }

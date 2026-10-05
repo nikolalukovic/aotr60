@@ -66,11 +66,14 @@ thread presents the frame from cheap checkpoints inside the logic (all Direct3D 
 hold becomes two short ones. The logic itself is untouched. `SplitPresent = 0` or Ctrl+Shift+F9 switches it off.
 
 **Uniform camera scroll.** The stock camera pans slower over low ground and faster over high ground (the scroll
-step is scaled by the camera's absolute height), and it freezes the camera height while scrolling. With
-`UniformScroll = 1` (default, single player) the step uses the height above the ground and the camera keeps following
-the terrain while scrolling, so panning has the same speed over high and low ground; the speed where you first scroll
-on a map is unchanged. It applies at 30 and 60 FPS, affects only player scrolling (not scripted cameras) and does not
-change game logic or speed. `UniformScroll = 0` or Ctrl+Shift+F8 restores the stock camera.
+step is scaled by the camera's absolute height), freezes the camera height while scrolling, and slows down on slopes
+that fall away from the camera (in both scroll directions). With `UniformScroll = 1` (default, single player) the step
+uses the height above the ground, the camera keeps following the terrain while scrolling, and a slope term measured
+from the camera's own height grid speeds the step up on falling slopes (at most 2x) and down on facing ones (at most
+0.71x), so panning keeps the same on-screen speed over hills, valleys and moderate slopes; very steep slopes are only
+partly corrected. The speed where you first scroll on a map is unchanged. It applies at 30 and 60 FPS, affects only
+player scrolling (not scripted cameras) and does not change game logic or speed. `UniformScroll = 0` or
+Ctrl+Shift+F8 restores the stock camera; `UniformScrollSlope = 0` keeps the height part without the slope term.
 
 ## Settings
 
@@ -82,7 +85,8 @@ change game logic or speed. `UniformScroll = 0` or Ctrl+Shift+F8 restores the st
 | `Pacing` | stock | `stock` = exact stock speed; `nominal` = perfectly even 1000/60 ms frames, game 1 % slower |
 | `UnitInterpolation` | 1 | draw units half a step in between on the inserted frames |
 | `CameraInterpolation` | 1 | interpolate the camera picture too (needs UnitInterpolation) |
-| `UniformScroll` | 1 | same camera pan speed over high and low ground, single player (0 = stock camera) |
+| `UniformScroll` | 1 | same camera pan speed over high and low ground and on slopes, single player (0 = stock camera) |
+| `UniformScrollSlope` | 1 | the slope part of UniformScroll |
 | `PresentPacing` | 1 | without vsync: space the presented frames evenly |
 | `SplitPresent` | 1 | large battles: show the in-between frame in the middle of a long logic step (0 = off; 2 = profile, 3 = stress: testing only) |
 | `SplitPresentEarly` | 1 | with split present: start the frame before a predicted heavy logic step early |

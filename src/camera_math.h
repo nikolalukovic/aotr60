@@ -23,6 +23,24 @@ struct CameraCutLimits {
 bool InterpolateCameraHalfway(const CameraPose& a, const CameraPose& b, CameraPose* out,
                               const CameraCutLimits& limits = {});
 
+// Uniform scroll slope term. On a camera-height-grid ramp along the camera's forward direction the screen-centre
+// flow of a scroll step is (1 + k*s) times the flat-ground flow (k = cot(pitch), s = grid slope over the step), so
+// the forward part of the step is scaled by g with g * clamp(1 + k*chord(g*step), lo, hi) = 1, weighted in screen
+// space with the sideways part (a pure sideways step keeps g = 1). Falling slopes: at most 1/lo faster; facing slopes:
+// at most 1/hi slower; nearly as steep as the view ray: the boost fades out.
+struct SlopeScrollParams {
+    float k = 1.3032254f;        // |cameraOffset.xy| / cameraOffset.z = cot(pitch)
+    float sinPitch = 0.6087614f;
+    float lo = 0.5f;             // max speed-up 2x (falling slopes; exact for s >= -0.384)
+    float hi = 1.4f;             // max slow-down 0.71x (facing slopes; exact for s <= +0.307)
+    float fade = 0.15f;          // 1 + k*chord below this: the boost fades to 1 at 0
+    int iterations = 12;
+};
+using HeightSampleFn = float (*)(const void* ctx, float x, float y);
+// Step multiplier for a step of stepFwd along the unit forward (fx, fy) and stepRight sideways, from (px, py).
+float SlopeScrollFactor(HeightSampleFn sample, const void* ctx, float px, float py, float fx, float fy, float stepFwd,
+                        float stepRight, const SlopeScrollParams& p);
+
 struct CameraStats {
     uint32_t bSwaps = 0;
     uint32_t bNoRecord = 0;

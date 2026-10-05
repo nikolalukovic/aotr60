@@ -430,7 +430,81 @@ bool g_scrollRefPending = true;
 float g_scrollRefHeight = 0.0f;
 bool g_scrollModeOk = false;       // single-player battle (modes 0/2/6, no network)
 float g_savedCutoff = 0.0f;        // the view's cutoff before the DLL raised it
+bool g_scrollSlope = true;         // UniformScrollSlope
 constexpr float kRaisedCutoff = 3.0e38f;
+
+constexpr uint32_t kViewPosX = 0x0C;
+constexpr uint32_t kViewZoom = 0x3C;
+constexpr uint32_t kViewHagDesired = 0x40;
+constexpr uint32_t kViewGroundZ = 0x54;            // terrain height under the look-at point (0x48C24D)
+constexpr uint32_t kViewCamOffset = 0x23E8;        // camera offset (x, y, z); z = the map's max camera height
+constexpr uint32_t kViewHeightGrid = 0x2458;       // camera height grid object
+constexpr uint32_t kViewHeightGridValid = 0x2474;  // == grid+0x1C
+constexpr uint32_t kGridData = 0x00, kGridW = 0x0C, kGridH = 0x10, kGridCell = 0x14, kGridBorder = 0x18;
+// scrollBy 0x48C774 locals at the CAM_SCROLLNORM site: unit forward [ebp-0x34]/[ebp-0x30] (0x48C8CF/0x48C8D7),
+// aspect [ebp-8] (0x48C856).
+constexpr int kFrameFwdX = -0x34;
+constexpr int kFrameFwdY = -0x30;
+constexpr int kFrameAspect = -0x08;
+
+// float __thiscall height(grid, float x, float y) 0x70FE22: read-only, ret 8, result in st0, 0 when invalid.
+using GridHeightFn = float(__thiscall*)(const void* grid, float x, float y);
+
+struct GridSampleCtx {
+    const uint8_t* grid;
+    float x0, x1, y0, y1;
+};
+
+float SampleCameraGrid(const void* ctx, float x, float y)
+{
+    const GridSampleCtx* c = static_cast<const GridSampleCtx*>(ctx);
+    // Inside the interpolated area (outside the low edge the sampler repeats in a 40-unit sawtooth).
+    float h = reinterpret_cast<GridHeightFn>(0x70FE22)(c->grid, Clamp(x, c->x0, c->x1), Clamp(y, c->y0, c->y1));
+    return h < 5000.0f ? h : 5000.0f; // the look-at height the game uses: min(grid, 5000) (0x48C213)
+}
+
+// Slope term (camera_math.h SlopeScrollFactor) for this scroll step; 1 when it cannot be computed.
+float ScrollSlopeFactor(const uint8_t* view, const float* delta, const uint8_t* frame, float scale)
+{
+    if (!g_scrollSlope || !Field<uint8_t>(view, kViewHeightGridValid)) {
+        return 1.0f;
+    }
+    const uint8_t* grid = view + kViewHeightGrid;
+    int w = Field<int32_t>(grid, kGridW);
+    int h = Field<int32_t>(grid, kGridH);
+    int border = Field<int32_t>(grid, kGridBorder);
+    float cell = Field<float>(grid, kGridCell);
+    if (w < 2 || h < 2 || w > 1000000 / h || border < 0 || border > 100000 || !(cell > 1.0f && cell < 1000.0f) ||
+        !Field<const float*>(grid, kGridData)) {
+        return 1.0f;
+    }
+    float fx = *reinterpret_cast<const float*>(frame + kFrameFwdX);
+    float fy = *reinterpret_cast<const float*>(frame + kFrameFwdY);
+    float aspect = *reinterpret_cast<const float*>(frame + kFrameAspect);
+    float n2 = fx * fx + fy * fy;
+    if (!(n2 > 0.9f && n2 < 1.1f) || !(aspect == aspect)) {
+        return 1.0f; // forward not normalised (0x48C8BC skips it for a zero vector)
+    }
+    float ox = Field<float>(view, kViewCamOffset);
+    float oy = Field<float>(view, kViewCamOffset + 4);
+    float oz = Field<float>(view, kViewCamOffset + 8);
+    float oxy = std::sqrt(ox * ox + oy * oy);
+    if (!(oz > 1.0f) || !(oxy > 0.2f * oz && oxy < 5.0f * oz)) {
+        return 1.0f;
+    }
+    SlopeScrollParams p;
+    p.k = oxy / oz;
+    p.sinPitch = oz / std::sqrt(oxy * oxy + oz * oz);
+    float dx = delta[0];
+    float dy = delta[1];
+    float sx = (dx * fy - fx * dy) * scale; // the step scrollBy builds (0x48C962..0x48C9AC)
+    float sy = (-dx * fx * aspect - fy * dy) * scale;
+    float x0 = -10.0f * static_cast<float>(border); // sampler origin: (x + 10*border) / cell
+    GridSampleCtx ctx{grid, x0, x0 + static_cast<float>(w - 1) * cell - 0.01f, x0,
+                      x0 + static_cast<float>(h - 1) * cell - 0.01f};
+    return SlopeScrollFactor(SampleCameraGrid, &ctx, Field<float>(view, kViewPosX), Field<float>(view, kViewPosX + 4),
+                             fx, fy, sx * fx + sy * fy, sx * fy - sy * fx, p);
+}
 
 } // namespace
 
@@ -441,30 +515,41 @@ float UniformScrollFactor(float hag, float hagDesired, float maxHeight, float re
     return (hag + refHeight) / maxHeight;
 }
 
-extern "C" float __cdecl ScrollZoomFactor(const uint8_t* view)
+// CAVE_SCROLLNORM: the zoom factor of this scroll step. `delta` = the scroll vector (ESI), `frame` = scrollBy's EBP,
+// `scalar` = the camera settings' scroll speed scalar.
+extern "C" float __cdecl ScrollZoomFactor(const uint8_t* view, const float* delta, const uint8_t* frame, float scalar)
 {
-    float zoom = Field<float>(view, 0x3C);
+    float zoom = Field<float>(view, kViewZoom);
     uint8_t* ui = Ptr(kInGameUI);
     if (!g_uniformScroll || !g_scrollModeOk || !ui || !Field<uint8_t>(ui, 0x7F8)) {
         return zoom;
     }
     float maxHeight = Field<float>(view, 0x23F0);
-    float hag = Field<float>(view, 0x50); // eye height above the terrain (last update)
+    // Eye height above the last ground sample, with the zoom after that update's settle (view+0x50 is pre-settle).
+    float hag = zoom * maxHeight - Field<float>(view, kViewGroundZ);
     if (!(maxHeight > 1.0f) || !(hag == hag)) {
         return zoom;
     }
     if (g_scrollRefPending) {
-        float t = Field<float>(view, 0x54); // terrain height under the camera where the player first scrolls
+        float t = Field<float>(view, kViewGroundZ); // terrain height under the camera where the player first scrolls
         g_scrollRefHeight = (t == t) ? Clamp(t, 0.0f, 3000.0f) : 0.0f;
         g_scrollRefPending = false;
         Log("camera: uniform scroll reference height %.1f", g_scrollRefHeight);
     }
-    return UniformScrollFactor(hag, Field<float>(view, 0x40), maxHeight, g_scrollRefHeight);
+    float factor = UniformScrollFactor(hag, Field<float>(view, kViewHagDesired), maxHeight, g_scrollRefHeight);
+    if (delta && frame && scalar == scalar) {
+        float g = ScrollSlopeFactor(view, delta, frame, factor * 0.25f * scalar);
+        if (g == g) {
+            factor *= g;
+        }
+    }
+    return factor;
 }
 
-void UniformScrollInit(bool on)
+void UniformScrollInit(bool on, bool slope)
 {
     g_uniformScroll = on ? 1 : 0;
+    g_scrollSlope = slope;
 }
 
 void UniformScrollToggle()

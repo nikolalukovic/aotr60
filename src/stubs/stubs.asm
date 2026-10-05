@@ -1781,11 +1781,14 @@ g_scrollFactorTmp DD 0
 CAVE_SCROLLNORM PROC
     cmp byte ptr [g_uniformScroll], 0
     je stock
-    fstp dword ptr [g_scrollScalarTmp]  ; x87 empty for the C++ call (the game runs 24-bit precision: exact)
+    fstp dword ptr [g_scrollScalarTmp]  ; x87 empty for the C++ call (the stored float round-trips exactly)
     SAVE_ALL
-    push ebx
-    call ScrollZoomFactor               ; cdecl float(view) -> st0
-    add esp, 4
+    push dword ptr [g_scrollScalarTmp]  ; scroll speed scalar
+    push ebp                            ; scrollBy frame: unit forward [ebp-34h]/[ebp-30h], aspect [ebp-8]
+    push esi                            ; scroll delta (float[2])
+    push ebx                            ; view
+    call ScrollZoomFactor               ; cdecl float(view, delta, frame, scalar) -> st0
+    add esp, 16
     fstp dword ptr [g_scrollFactorTmp]
     RESTORE_ALL
     fld dword ptr [g_scrollScalarTmp]   ; st1 = scalar

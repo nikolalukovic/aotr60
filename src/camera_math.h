@@ -9,8 +9,8 @@ struct CameraPose {
 };
 
 struct CameraCutLimits {
-    float maxDistance = 300.0f; // world units between the two poses
-    float maxAngleDeg = 30.0f;  // rotation between the two poses
+    float maxDistance = 1500.0f; // world units between the two poses (fast pans stay smooth; minimap jumps cut)
+    float maxAngleDeg = 45.0f;   // rotation between the two poses
     float maxExtentChange = 0.05f;
 };
 

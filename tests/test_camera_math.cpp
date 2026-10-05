@@ -82,8 +82,9 @@ TEST(camera_halfway_takes_the_short_way_round)
 TEST(camera_cuts_are_not_interpolated)
 {
     CameraPose m{};
-    CHECK(!InterpolateCameraHalfway(Pose(0, 0, 0, 0), Pose(0, 400.0f, 0, 0), &m));  // distance
-    CHECK(!InterpolateCameraHalfway(Pose(0, 0, 0, 0), Pose(45.0f, 0, 0, 0), &m));   // angle
+    CHECK(InterpolateCameraHalfway(Pose(0, 0, 0, 0), Pose(0, 400.0f, 0, 0), &m));   // a fast pan is not a cut
+    CHECK(!InterpolateCameraHalfway(Pose(0, 0, 0, 0), Pose(0, 2000.0f, 0, 0), &m)); // distance
+    CHECK(!InterpolateCameraHalfway(Pose(0, 0, 0, 0), Pose(60.0f, 0, 0, 0), &m));   // angle
     CameraPose b = Pose(0, 0, 0, 0);
     b.vp[4] = 1.7777f;
     CHECK(!InterpolateCameraHalfway(Pose(0, 0, 0, 0), b, &m)); // aspect changed

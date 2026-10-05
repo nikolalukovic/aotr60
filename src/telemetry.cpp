@@ -201,7 +201,7 @@ void Report(int64_t now)
     double frac60 = renders > 0 ? static_cast<double>(g_t.renders60 - g_tPrev.renders60) / renders : 0.0;
     char line[512];
     std::snprintf(line, sizeof(line),
-                  "%.1f,%.3f,%.2f,%.2f,%.2f,%u,%u,%.3f,%.3f,%.2f,%.1f,%.2f,%u,%llu,%llu,%llu,%u,%u,%u,%llu\r\n",
+                  "%.1f,%.3f,%.2f,%.2f,%.2f,%u,%u,%.3f,%.3f,%.2f,%.1f,%.2f,%u,%llu,%llu,%llu,%u,%u,%u,%llu,%u,%u,%u\r\n",
                   static_cast<double>(now - g_start) / g_freq, frac60, renders / dt,
                   static_cast<double>(g_t.rendersA - g_tPrev.rendersA) / dt, (presents - g_prevPresents) / dt,
                   g_pacerStats.lateSkips - g_prevPacer.lateSkips, g_pacerStats.forcedSkips - g_prevPacer.forcedSkips,
@@ -214,7 +214,8 @@ void Report(int64_t now)
                   static_cast<unsigned long long>(g_t.tickChecks - g_tPrev.tickChecks),
                   static_cast<unsigned long long>(g_t.tickErrors - g_tPrev.tickErrors), g_c5Stats.replays,
                   g_cameraStats.bSwaps, g_cameraStats.aSwaps,
-                  static_cast<unsigned long long>(g_t.clockResets - g_tPrev.clockResets));
+                  static_cast<unsigned long long>(g_t.clockResets - g_tPrev.clockResets), g_cameraStats.aCuts,
+                  g_cameraStats.aShake, g_cameraStats.aNoHistory);
     CsvLine(line);
     g_tPrev = g_t;
     g_prevPresents = presents;
@@ -238,7 +239,7 @@ void TelemetryInit(const Config& cfg)
                                 FILE_ATTRIBUTE_NORMAL, nullptr);
             CsvLine("t_s,frac60,renders_s,a_renders_s,presents_s,late_skips,forced_skips,logic_ticks_s,logic_calls_s,"
                     "mframe_s,sync_ms_s,debt_ms,gaps,seed_outside_logic,tick_checks,tick_errors,c5_replays,"
-                    "cam_b_swaps,cam_a_swaps,clock_resets\r\n");
+                    "cam_b_swaps,cam_a_swaps,clock_resets,cam_a_cuts,cam_a_shake,cam_a_nohist\r\n");
         }
     }
 }

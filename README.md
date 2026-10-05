@@ -8,20 +8,38 @@ and effects half a step in between. Save games stay compatible both ways.
 Where it is active: campaign, Living World battles, skirmish against the AI and tutorials. Menus, multiplayer,
 replays, the Living World strategic map and Create-a-Hero stay at the stock 30 FPS.
 
-## Install / uninstall
+## Install
 
-AotR60 is a proxy `dinput8.dll` placed in `rotwk\`. Nothing else in the game folder is changed; every patch is
-applied in memory when the game starts, and only after the game executable has been identified as the AotR build it
-was made for (otherwise the DLL just forwards DirectInput and the game runs stock).
+1. Clone this repository **into your Age of the Ring folder** (the folder that contains `rotwk\` and `aotr\`):
 
-```powershell
-.\build.ps1      # build (Visual Studio 2026 C++ x86 tools) and run the unit tests
-.\install.ps1    # copy build\Release\dinput8.dll to ..\rotwk\
-.\uninstall.ps1  # remove it again
-```
+   ```bat
+   cd /d "D:\Games\Age of the Ring"
+   git clone <repository-url> aotr60
+   ```
+
+2. Run `aotr60\install.cmd` (double-click it). It checks the game folder and the game version, then copies the
+   prebuilt `bin\dinput8.dll` to `rotwk\dinput8.dll`. That is the only file it writes.
+3. Start Age of the Ring as usual (AotR launcher). Start a skirmish or campaign mission: 60 FPS switches on
+   automatically a second after the match begins.
+
+`aotr60\uninstall.cmd` removes it again. To update, `git pull` in the `aotr60` folder and run `install.cmd` again.
+
+AotR60 patches the game **in memory** when it starts; no game file is modified. The patches are applied only after
+the executable has been identified as the Age of the Ring build AotR60 was made for; with any other version the DLL
+just forwards DirectInput and the game runs at stock 30 FPS.
 
 **AotR launcher:** the launcher reports `rotwk\dinput8.dll` as a modified game file. Accepting its PATCH deletes the
-DLL; run `install.ps1` again afterwards (also after every AotR update).
+DLL; run `install.cmd` again afterwards (also after every AotR update).
+
+### Building from source (optional)
+
+Needs Visual Studio 2026 with the C++ x86 tools (CMake is the one bundled with Visual Studio).
+
+```powershell
+.\build.ps1              # build and run the unit tests
+.\build.ps1 -Publish     # ... and refresh bin\dinput8.dll
+.\install.cmd -Build     # build from source and install that DLL
+```
 
 ## In game
 
@@ -73,3 +91,5 @@ See `docs/PLAN.md` for the full design and `docs/analysis/` for the reverse-engi
 - `src/stubs/stubs.asm` holds all stubs; `src/frame_ctl.cpp` the 30/60 mode controller; `src/pacer.cpp` the pacer;
   `src/camera.cpp` the camera presentation; `src/telemetry.cpp` the measurements.
 - Unit tests: `build\Release\aotr60_tests.exe` (run by `build.ps1`).
+- `Telemetry = 2` writes `aotr60_trace.txt` (logic frame, logic RNG seed and the engine's sync CRC per logic tick);
+  `tools/compare_traces.py A B` compares two traces, e.g. a game played at 60 FPS and its replay played back at 30.

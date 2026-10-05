@@ -1,0 +1,6 @@
+# build output (the released DLL lives in bin/)
+/build/
+/out/
+__pycache__/
+*.pyc
+.vs/

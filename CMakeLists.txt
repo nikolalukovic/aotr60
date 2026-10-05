@@ -17,6 +17,8 @@ add_library(aotr60_core STATIC
     src/build_id.cpp
     src/config.cpp
     src/crc32.cpp
+    src/frame_state.cpp
+    src/patcher.cpp
 )
 target_include_directories(aotr60_core PUBLIC src)
 target_compile_options(aotr60_core PRIVATE ${AOTR60_COMMON_OPTIONS})
@@ -34,7 +36,7 @@ target_compile_options(aotr60 PRIVATE ${AOTR60_COMMON_OPTIONS})
 set_target_properties(aotr60 PROPERTIES OUTPUT_NAME dinput8)
 
 enable_testing()
-add_executable(aotr60_tests tests/test_main.cpp tests/test_core.cpp)
+add_executable(aotr60_tests tests/test_main.cpp tests/test_core.cpp tests/test_patcher.cpp tests/test_frame_state.cpp)
 target_link_libraries(aotr60_tests PRIVATE aotr60_core)
 target_compile_options(aotr60_tests PRIVATE ${AOTR60_COMMON_OPTIONS})
 target_compile_definitions(aotr60_tests PRIVATE AOTR60_GAME_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/..")

@@ -215,7 +215,9 @@ int PacerFallbackSecondsLeft();       // 0 when no fallback is active
 
 // telemetry.cpp
 void TelemetryInit(const Config& cfg);
+void TelemetryIterationBegin();     // first thing at C0: closes the previous main-loop iteration's timing
 void TelemetryOnPreRender(int stepperS);
+void TelemetryOnPostRender();
 void TelemetryOnModeChange(bool on, const char* reason);
 void TelemetryOnReset();
 

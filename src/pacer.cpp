@@ -253,9 +253,12 @@ extern "C" uint32_t __cdecl AotR60_Pacer(uint8_t* engine)
             }
             g_deadline -= pay;
             g_owed -= pay;
+            int64_t waitStart = Now();
             WaitUntil(g_deadline);
+            g_pacerStats.pacerWaitTicks += Now() - waitStart;
         }
     }
+    g_pacerStats.owedTicks = g_owed;
     g_pacerRanRid = g_renderId;
     ++g_pacerStats.iterations;
     ++g_windowIterations;
@@ -358,6 +361,7 @@ extern "C" void __cdecl AotR60_PresentDone()
     }
     int64_t took = Now() - g_presentCall;
     g_presentCall = 0;
+    g_pacerStats.presentCallTicks += took;
     if (took > g_freq / 1000) {
         g_presentsSinceBlock = 0;
     }

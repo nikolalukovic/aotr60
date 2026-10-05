@@ -22,6 +22,9 @@ struct PacerStats {
     uint32_t lateReleases = 0;
     uint32_t onTimeIterations = 0;
     int64_t lateReleaseTicks = 0;
+    int64_t pacerWaitTicks = 0;   // time spent waiting for iteration deadlines (cumulative)
+    int64_t presentCallTicks = 0; // time spent inside Present (cumulative)
+    int64_t owedTicks = 0;        // time currently owed after late releases
 };
 extern PacerStats g_pacerStats;
 

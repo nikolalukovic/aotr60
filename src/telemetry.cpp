@@ -60,6 +60,45 @@ uint32_t g_seedAtExit = 0;
 bool g_seedValid = false;
 uint64_t g_lwTickRendersA = 0; // A-renders count at the previous Living World logic tick
 
+// Frame timing diagnostics: one main-loop iteration runs from C0 to the next C0 and consists of the mode check,
+// the render (clientUpdate incl. the draw and Present), the step (logic update on a stock step) and the frame
+// limiter (the pacer's wait in 60 mode). Iterations far over their slot are logged with that breakdown.
+struct Iteration {
+    int64_t start = 0;         // C0
+    int64_t checked = 0;       // end of the C0 mode controller
+    int64_t rendered = 0;      // end of clientUpdate
+    int64_t logic = 0;         // GameLogic::update calls of this iteration's step (+ Living World logic)
+    int64_t lwLogic = 0;
+    int logicSub = 0;
+    uint32_t logicFrame = 0;
+    int64_t pacerWait0 = 0;    // pacer counters at C0
+    int64_t presentCall0 = 0;
+    int64_t presentWait0 = 0;
+    bool sixty = false;
+    bool bRender = false;
+    bool aRender = false;
+};
+Iteration g_it;
+
+struct TimingWindow {
+    int64_t iterMax = 0;
+    int64_t renderAMax = 0;
+    int64_t renderBMax = 0;
+    int64_t renderASum = 0;
+    uint32_t renderACount = 0;
+    int64_t logic1Max = 0;
+    int64_t logic1Sum = 0;
+    uint32_t logic1Count = 0;
+    int64_t logicOtherMax = 0;
+    int64_t checkMax = 0;
+    int64_t presentMax = 0;
+    uint32_t stalls = 0;      // iterations over 1.5 slots
+    uint32_t bigStalls = 0;   // iterations over 3 slots
+};
+TimingWindow g_tw;
+uint32_t g_stallLines = 0;
+uint64_t g_stallsTotal = 0;
+
 // Current tick window (between two GameLogic::update(1) calls).
 struct TickWindow {
     bool valid = false;
@@ -89,6 +128,11 @@ int64_t Now()
     LARGE_INTEGER t;
     QueryPerformanceCounter(&t);
     return t.QuadPart;
+}
+
+double Ms(int64_t ticks)
+{
+    return static_cast<double>(ticks) * 1000.0 / static_cast<double>(g_freq);
 }
 
 void CsvLine(const char* text)
@@ -228,7 +272,7 @@ void Report(int64_t now)
     char extra[256];
     uint32_t iters = p.iterations - q.iterations;
     double onTimePct = iters ? 100.0 * (p.onTimeIterations - q.onTimeIterations) / iters : 0.0;
-    std::snprintf(extra, sizeof(extra), ",%.2f,%.2f,%.2f,%.2f,%.1f,%u,%.1f,%u,%.1f,%.3f,%u,%u\r\n",
+    std::snprintf(extra, sizeof(extra), ",%.2f,%.2f,%.2f,%.2f,%.1f,%u,%.1f,%u,%.1f,%.3f,%u,%u",
                   na ? ms(p.relPresentTicksA - q.relPresentTicksA) / na : 0.0,
                   nb ? ms(p.relPresentTicksB - q.relPresentTicksB) / nb : 0.0, ms(p.presentSpacingMin),
                   ms(p.presentSpacingMax), ms(p.presentWaitTicks - q.presentWaitTicks), p.lateReleases - q.lateReleases,
@@ -239,6 +283,16 @@ void Report(int64_t now)
         line[len - 2] = 0; // drop "\r\n" and append the pacing columns
     }
     strncat_s(line, sizeof(line), extra, _TRUNCATE);
+    // Frame timing (ms): longest iteration, render A max/mean, render B max, logic sub 1 max/mean, other subs max,
+    // C0 mode check max, Present call max, stalls over 1.5 and 3 slots.
+    const TimingWindow& w = g_tw;
+    char timing[256];
+    std::snprintf(timing, sizeof(timing), ",%.1f,%.1f,%.2f,%.1f,%.1f,%.2f,%.1f,%.2f,%.1f,%u,%u\r\n", Ms(w.iterMax),
+                  Ms(w.renderAMax), w.renderACount ? Ms(w.renderASum) / w.renderACount : 0.0, Ms(w.renderBMax),
+                  Ms(w.logic1Max), w.logic1Count ? Ms(w.logic1Sum) / w.logic1Count : 0.0, Ms(w.logicOtherMax),
+                  Ms(w.checkMax), Ms(w.presentMax), w.stalls, w.bigStalls);
+    strncat_s(line, sizeof(line), timing, _TRUNCATE);
+    g_tw = TimingWindow{};
     CsvLine(line);
     g_tPrev = g_t;
     g_prevPresents = presents;
@@ -267,7 +321,8 @@ void TelemetryInit(const Config& cfg)
                     "cam_b_swaps,cam_a_swaps,clock_resets,cam_a_cuts,cam_a_shake,cam_a_nohist,"
                     "a_rel_present_ms,b_rel_present_ms,present_spacing_min_ms,present_spacing_max_ms,present_wait_ms,"
                     "late_releases,late_release_ms,cam_shaker_far,on_time_pct,lw_ticks_s,lw_cam_a_swaps,"
-                    "lw_objects_presented\r\n");
+                    "lw_objects_presented,iter_max_ms,render_a_max_ms,render_a_mean_ms,render_b_max_ms,logic1_max_ms,"
+                    "logic1_mean_ms,logic_other_max_ms,check_max_ms,present_max_ms,stalls,big_stalls\r\n");
             if (cfg.telemetry >= 2) {
                 SYSTEMTIME t;
                 GetLocalTime(&t);
@@ -287,8 +342,72 @@ void TelemetryInit(const Config& cfg)
     }
 }
 
+void TelemetryIterationBegin()
+{
+    if (g_cfg.telemetry < 1) {
+        return;
+    }
+    int64_t now = Now();
+    const Iteration& it = g_it;
+    if (it.start != 0 && it.rendered > it.start) {
+        int64_t total = now - it.start;
+        int64_t check = it.checked > it.start ? it.checked - it.start : 0;
+        int64_t render = it.rendered - (it.checked > it.start ? it.checked : it.start);
+        int64_t wait = g_pacerStats.pacerWaitTicks - it.pacerWait0;
+        int64_t present = g_pacerStats.presentCallTicks - it.presentCall0;
+        int64_t presentWait = g_pacerStats.presentWaitTicks - it.presentWait0;
+        int64_t other = total - check - render - it.logic - wait;
+        g_tw.iterMax = total > g_tw.iterMax ? total : g_tw.iterMax;
+        g_tw.checkMax = check > g_tw.checkMax ? check : g_tw.checkMax;
+        g_tw.presentMax = present > g_tw.presentMax ? present : g_tw.presentMax;
+        if (it.aRender) {
+            g_tw.renderAMax = render > g_tw.renderAMax ? render : g_tw.renderAMax;
+            g_tw.renderASum += render;
+            ++g_tw.renderACount;
+        }
+        else {
+            g_tw.renderBMax = render > g_tw.renderBMax ? render : g_tw.renderBMax;
+        }
+        int64_t slot = (it.sixty ? 33 : 66) * g_freq / 2000; // 16.5 ms / 33 ms
+        if (total > slot * 3 / 2) {
+            ++g_tw.stalls;
+            ++g_stallsTotal;
+            if (total > slot * 3) {
+                ++g_tw.bigStalls;
+            }
+            bool log = g_stallLines < 600 || (total > slot * 6 && g_stallLines < 2000) || g_stallsTotal % 50 == 0;
+            if (log) {
+                ++g_stallLines;
+                Log("stall %d %s: %.1f ms = check %.1f + render %.1f (Present %.1f, spacing wait %.1f) + logic %.1f "
+                    "(sub %d, frame %u%s) + pacer wait %.1f + other %.1f; owed %.1f",
+                    it.sixty ? 60 : 30, it.sixty ? (it.bRender ? "B" : "A") : "-", Ms(total), Ms(check), Ms(render),
+                    Ms(present), Ms(presentWait), Ms(it.logic), it.logicSub, it.logicFrame,
+                    it.lwLogic > 0 ? ", incl. Living World" : "", Ms(wait), Ms(other), Ms(g_pacerStats.owedTicks));
+            }
+        }
+    }
+    g_it = Iteration{};
+    g_it.start = now;
+    g_it.pacerWait0 = g_pacerStats.pacerWaitTicks;
+    g_it.presentCall0 = g_pacerStats.presentCallTicks;
+    g_it.presentWait0 = g_pacerStats.presentWaitTicks;
+}
+
+void TelemetryOnPostRender()
+{
+    if (g_cfg.telemetry >= 1 && g_it.start != 0) {
+        g_it.rendered = Now();
+    }
+}
+
 void TelemetryOnPreRender(int stepperS)
 {
+    if (g_cfg.telemetry >= 1 && g_it.start != 0) {
+        g_it.checked = Now();
+        g_it.sixty = g_m60 != 0;
+        g_it.bRender = g_m60 && g_inB;
+        g_it.aRender = g_uiTick != 0;
+    }
     // A failed tick attempt (pause, frozen logic) leaves the stepper at s > 6.
     if (stepperS > 6) {
         g_w.stalled = true;
@@ -363,6 +482,13 @@ void TelemetryOnPreRender(int stepperS)
 void TelemetryOnModeChange(bool on, const char* reason)
 {
     Log("mode: %s (%s) at render %u, m_frame %u", on ? "60 FPS on" : "60 FPS off", reason, g_renderId, MFrame());
+    // The engine's D3DPRESENT_PARAMETERS (0xDD2FF8): back buffer, Windowed +0x20, refresh +0x30, interval +0x34.
+    if (on) {
+        uint32_t interval = Read<uint32_t>(0xDD302C);
+        Log("display: %ux%u, %s, refresh %u Hz, presentation interval 0x%X (%s)", Read<uint32_t>(0xDD2FF8),
+            Read<uint32_t>(0xDD2FFC), Read<uint32_t>(0xDD3018) ? "windowed" : "fullscreen", Read<uint32_t>(0xDD3028),
+            interval, interval == 0x80000000u ? "immediate, no vsync" : "vsync");
+    }
     g_w.broken = true;
 }
 
@@ -440,7 +566,13 @@ extern "C" void __fastcall LwLogicUpdateWrapper(uint8_t* lwLogic, void*)
 {
     uint32_t frame = Field<uint32_t>(lwLogic, 0x100);
     uint32_t seedIn = Read<uint32_t>(kLogicRngSeed);
+    int64_t t0 = g_cfg.telemetry >= 1 ? Now() : 0;
     reinterpret_cast<LwLogicUpdateFn>(kFnLwLogicUpdate)(lwLogic);
+    if (t0) {
+        int64_t d = Now() - t0;
+        g_it.logic += d;
+        g_it.lwLogic += d;
+    }
     uint32_t seedOut = Read<uint32_t>(kLogicRngSeed);
     if (g_seedValid) {
         g_seedAtExit = seedOut; // LW logic RNG use is logic, not "outside logic"
@@ -487,7 +619,22 @@ extern "C" uint32_t __fastcall LogicUpdateWrapper(uint8_t* logic, void*, int sub
             g_w.broken = true;
         }
     }
+    int64_t t0 = g_cfg.telemetry >= 1 ? Now() : 0;
     uint32_t result = reinterpret_cast<LogicUpdateFn>(kFnLogicUpdate)(logic, sub);
+    if (t0) {
+        int64_t d = Now() - t0;
+        g_it.logic += d;
+        g_it.logicSub = sub;
+        g_it.logicFrame = Field<uint32_t>(logic, 0x40);
+        if (sub == 1) {
+            g_tw.logic1Max = d > g_tw.logic1Max ? d : g_tw.logic1Max;
+            g_tw.logic1Sum += d;
+            ++g_tw.logic1Count;
+        }
+        else {
+            g_tw.logicOtherMax = d > g_tw.logicOtherMax ? d : g_tw.logicOtherMax;
+        }
+    }
     g_seedAtExit = Read<uint32_t>(kLogicRngSeed);
     g_seedValid = true;
     if (g_trace != INVALID_HANDLE_VALUE) {

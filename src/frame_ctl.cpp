@@ -44,39 +44,61 @@ bool LodNeutral()
 }
 
 // PLAN §1.7: no 60 mode while Presents are tied to a display refreshing below 59 Hz (vsync on). The engine's own
-// D3DPRESENT_PARAMETERS live at 0xDD2FF8 (hDeviceWindow +0x1C, PresentationInterval +0x34). Applies to windowed
-// mode too (DWM / DXVK FIFO). Cached; re-evaluated about once per second.
+// D3DPRESENT_PARAMETERS live at 0xDD2FF8 (hDeviceWindow +0x1C, Windowed +0x20, FullScreen_RefreshRateInHz +0x30,
+// PresentationInterval +0x34). Applies to windowed mode too (DWM / DXVK FIFO).
+// Evaluated only when those parameters change (device creation, reset, mode switch), never periodically: this runs
+// on the game thread before every render, and display queries made there while the game was fullscreen coincided
+// with a hitch about once a second. Fullscreen takes the refresh rate from the present parameters (no OS call).
 const char* DisplayBlockReason()
 {
-    static DWORD lastCheck = 0;
+    struct Signature {
+        uint32_t interval;
+        uint32_t windowed;
+        uint32_t refresh;
+        HWND hwnd;
+        bool operator==(const Signature&) const = default;
+    };
+    static Signature last{};
     static bool valid = false;
     static const char* cached = nullptr;
-    DWORD now = GetTickCount();
-    if (valid && now - lastCheck < 1000) {
+    Signature now{Read<uint32_t>(0xDD302C), Read<uint32_t>(0xDD3018), Read<uint32_t>(0xDD3028), Read<HWND>(0xDD3014)};
+    if (valid && now == last) {
         return cached;
     }
     valid = true;
-    lastCheck = now;
+    last = now;
     cached = nullptr;
-    uint32_t interval = Read<uint32_t>(0xDD302C);
-    if (interval == 0x80000000u) {
+    if (now.interval == 0x80000000u) {
+        Log("display: no vsync (presentation interval immediate)");
         return cached; // D3DPRESENT_INTERVAL_IMMEDIATE: no vsync
     }
-    uint32_t divisor = interval == 2 ? 2 : interval == 4 ? 3 : interval == 8 ? 4 : 1;
-    HWND hwnd = Read<HWND>(0xDD3014);
-    HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
-    MONITORINFOEXW info{};
-    info.cbSize = sizeof(info);
-    DEVMODEW mode{};
-    mode.dmSize = sizeof(mode);
-    if (!monitor || !GetMonitorInfoW(monitor, &info) ||
-        !EnumDisplaySettingsW(info.szDevice, ENUM_CURRENT_SETTINGS, &mode)) {
-        return cached;
+    uint32_t divisor = now.interval == 2 ? 2 : now.interval == 4 ? 3 : now.interval == 8 ? 4 : 1;
+    uint32_t hz = 0;
+    double queryMs = 0.0;
+    if (!now.windowed && now.refresh > 1) {
+        hz = now.refresh;
     }
-    uint32_t hz = mode.dmDisplayFrequency;
+    else {
+        LARGE_INTEGER f, t0, t1;
+        QueryPerformanceFrequency(&f);
+        QueryPerformanceCounter(&t0);
+        HMONITOR monitor = MonitorFromWindow(now.hwnd, MONITOR_DEFAULTTOPRIMARY);
+        MONITORINFOEXW info{};
+        info.cbSize = sizeof(info);
+        DEVMODEW mode{};
+        mode.dmSize = sizeof(mode);
+        if (monitor && GetMonitorInfoW(monitor, &info) &&
+            EnumDisplaySettingsW(info.szDevice, ENUM_CURRENT_SETTINGS, &mode)) {
+            hz = mode.dmDisplayFrequency;
+        }
+        QueryPerformanceCounter(&t1);
+        queryMs = static_cast<double>(t1.QuadPart - t0.QuadPart) * 1000.0 / static_cast<double>(f.QuadPart);
+    }
     if (hz > 1 && hz / divisor < 59) {
         cached = "display refresh below 59 Hz with vsync";
     }
+    Log("display: vsync (presentation interval 0x%X), %s, refresh %u Hz%s (query %.2f ms)", now.interval,
+        now.windowed ? "windowed" : "fullscreen", hz, cached ? " - 60 FPS not possible" : "", queryMs);
     return cached;
 }
 
@@ -357,6 +379,7 @@ extern "C" void __cdecl OnPreRender(uint8_t* engine)
         g_anomaly |= 0x80000000u;
         return;
     }
+    TelemetryIterationBegin();
     CloseWindowsSafetyNet("C0");
     PollHotkeys();
 
@@ -409,6 +432,7 @@ extern "C" void __cdecl OnPostRender()
     if (!OnMainThread()) {
         return;
     }
+    TelemetryOnPostRender();
     if (g_skipB) {
         SetIntegratorVariablesForB(false);
     }

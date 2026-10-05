@@ -117,7 +117,23 @@ const char* GameModeBlockReason(uint8_t* gl)
     uint8_t* lwl = Ptr(kLwLogic);
     bool viewActive = view && Field<uint8_t>(view, 0x18);
     if (mode != 8 && !viewActive && !Field<uint8_t>(gl, 0x125)) {
-        return (mode == 0 || mode == 2 || mode == 6) ? nullptr : "game mode (menu or multiplayer)";
+        switch (mode) {
+        case 0:
+        case 2:
+        case 6:
+            return nullptr;
+        case 9:
+            return "main menu"; // AotR's menus: APT at 30 fps over a still image, nothing to gain at 60
+        case 1:
+        case 5:
+            return "multiplayer";
+        case 3:
+            return "replay";
+        case 7:
+            return "Create-a-Hero";
+        default:
+            return "game mode";
+        }
     }
     if (!g_cfg.livingWorldMap) {
         return "Living World strategic map (LivingWorldMap=0)";
@@ -344,11 +360,16 @@ bool HotkeyPressed(int key, bool& wasDown)
 //   Ctrl+Shift+F11  60 FPS on/off (the mode controller applies it at the next pair boundary)
 //   Ctrl+Shift+F10  unit + camera interpolation on/off
 //   Ctrl+Shift+F9   split present (heavy logic steps) on/off
+//   Ctrl+Shift+F8   uniform camera scroll on/off
 void PollHotkeys()
 {
     if (HotkeyPressed(VK_F11, g_hotkeyDown)) {
         g_enabled = !g_enabled;
         Log("hotkey: 60 FPS %s", g_enabled ? "switched on" : "switched off");
+    }
+    static bool scrollDown = false;
+    if (HotkeyPressed(VK_F8, scrollDown)) {
+        UniformScrollToggle();
     }
     static bool splitDown = false;
     if (HotkeyPressed(VK_F9, splitDown) && SplitPresentInstalled()) {
@@ -373,6 +394,7 @@ void FrameControlInit(const Config& cfg, bool installed)
     g_featPresent = cfg.unitInterpolation ? 1 : 0;
     // The interpolated camera only matches units drawn at the same half step (PLAN §1.2).
     g_featCamInterp = (cfg.cameraInterpolation && cfg.unitInterpolation) ? 1 : 0;
+    UniformScrollInit(cfg.uniformScroll);
     if (cfg.cameraInterpolation && !cfg.unitInterpolation) {
         Log("config: CameraInterpolation ignored without UnitInterpolation");
     }
@@ -393,6 +415,7 @@ extern "C" void __cdecl OnPreRender(uint8_t* engine)
     SplitPresentOnC0();
     CloseWindowsSafetyNet("C0");
     PollHotkeys();
+    UniformScrollOnC0();
 
     const char* block = BlockReason();
     const char* startBlock = block ? block : StartBlockReason();
@@ -474,5 +497,6 @@ extern "C" void __cdecl OnEngineReset()
     }
     g_lodChecked = nullptr; // GameLOD may be re-read for the next game
     SplitPresentReset(kCancelEngineReset);
+    UniformScrollOnReset();
     TelemetryOnReset();
 }

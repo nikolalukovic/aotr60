@@ -415,6 +415,91 @@ extern "C" void __cdecl LwCamSceneEnd()
     }
 }
 
+// ---- Uniform scroll (UniformScroll, Ctrl+Shift+F8) ----
+// Stock W3DView::scrollBy (0x48C774) moves the camera by |scroll| * zoom * 0.25 * scalar per update, and zoom is the
+// eye's ABSOLUTE height / the map's max camera height (W3DView+0x23F0, 540 on most AotR maps): over low ground the
+// same step looks slower, over high ground faster. And while the player scrolls at or above ScrollAmountCutoff (AotR:
+// 50, copied to W3DView+0x2404 at 0x48BCD8; only reader 0x48C314) the eye height is frozen while the look-at point
+// follows the terrain. With the switch on (single player only): the step uses the height above the ground plus a
+// reference terrain height (taken where the player first scrolls on the map, so the speed there is unchanged), and
+// the cutoff is raised so the camera keeps following the terrain while scrolling. Only player scrolling is affected
+// (InGameUI isScrolling); scripted and follow cameras are stock.
+namespace {
+
+bool g_scrollRefPending = true;
+float g_scrollRefHeight = 0.0f;
+bool g_scrollModeOk = false;       // single-player battle (modes 0/2/6, no network)
+float g_savedCutoff = 0.0f;        // the view's cutoff before the DLL raised it
+constexpr float kRaisedCutoff = 3.0e38f;
+
+} // namespace
+
+float UniformScrollFactor(float hag, float hagDesired, float maxHeight, float refHeight)
+{
+    float lo = (hagDesired == hagDesired && hagDesired > 2.0f) ? 0.5f * hagDesired : 1.0f;
+    hag = Clamp(hag, lo, 4.0f * maxHeight); // only transients (minimap jumps, fast climbs) are limited
+    return (hag + refHeight) / maxHeight;
+}
+
+extern "C" float __cdecl ScrollZoomFactor(const uint8_t* view)
+{
+    float zoom = Field<float>(view, 0x3C);
+    uint8_t* ui = Ptr(kInGameUI);
+    if (!g_uniformScroll || !g_scrollModeOk || !ui || !Field<uint8_t>(ui, 0x7F8)) {
+        return zoom;
+    }
+    float maxHeight = Field<float>(view, 0x23F0);
+    float hag = Field<float>(view, 0x50); // eye height above the terrain (last update)
+    if (!(maxHeight > 1.0f) || !(hag == hag)) {
+        return zoom;
+    }
+    if (g_scrollRefPending) {
+        float t = Field<float>(view, 0x54); // terrain height under the camera where the player first scrolls
+        g_scrollRefHeight = (t == t) ? Clamp(t, 0.0f, 3000.0f) : 0.0f;
+        g_scrollRefPending = false;
+        Log("camera: uniform scroll reference height %.1f", g_scrollRefHeight);
+    }
+    return UniformScrollFactor(hag, Field<float>(view, 0x40), maxHeight, g_scrollRefHeight);
+}
+
+void UniformScrollInit(bool on)
+{
+    g_uniformScroll = on ? 1 : 0;
+}
+
+void UniformScrollToggle()
+{
+    g_uniformScroll = g_uniformScroll ? 0 : 1;
+    Log("hotkey: uniform camera scroll %s", g_uniformScroll ? "on" : "off");
+    UniformScrollOnC0();
+}
+
+void UniformScrollOnReset()
+{
+    g_scrollRefHeight = 0.0f;
+    g_scrollRefPending = true;
+}
+
+void UniformScrollOnC0()
+{
+    uint8_t* tv = Ptr(kTacticalView);
+    uint8_t* gl = Ptr(kTheGameLogic);
+    if (!tv) {
+        return;
+    }
+    uint32_t mode = gl ? Field<uint32_t>(gl, 0x110) : 0xFFFFFFFFu;
+    g_scrollModeOk = gl && (mode == 0 || mode == 2 || mode == 6) && !Ptr(kTheNetwork);
+    bool active = g_uniformScroll && g_scrollModeOk;
+    float cutoff = Field<float>(tv, 0x2404);
+    if (active && cutoff != kRaisedCutoff) {
+        g_savedCutoff = cutoff;
+        SetField<float>(tv, 0x2404, kRaisedCutoff);
+    }
+    else if (!active && cutoff == kRaisedCutoff) {
+        SetField<float>(tv, 0x2404, g_savedCutoff); // restore exactly what was there
+    }
+}
+
 // drawFrame exit (0x44A271): real camera and stock fraction/key back.
 extern "C" void __cdecl SceneRestore()
 {

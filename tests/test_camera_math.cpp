@@ -1,6 +1,7 @@
 #include "test.h"
 
 #include "camera_math.h"
+#include "runtime.h"
 
 #include <cmath>
 
@@ -114,4 +115,13 @@ TEST(camera_living_world_zoom_keeps_the_larger_far_plane)
     CameraPose d = b;
     d.vp[4] = 1.7777f;
     CHECK(!InterpolateCameraHalfway(a, d, &m, lw)); // aspect changed
+}
+
+TEST(uniform_scroll_factor_uses_height_above_ground)
+{
+    CHECK(Near(UniformScrollFactor(50.0f, 50.0f, 540.0f, 0.0f), 50.0f / 540.0f));   // zoomed in close: not floored
+    CHECK(Near(UniformScrollFactor(10.0f, 120.0f, 540.0f, 0.0f), 60.0f / 540.0f));  // transient below half the desired
+    CHECK(Near(UniformScrollFactor(540.0f, 540.0f, 540.0f, 20.0f), 560.0f / 540.0f));
+    CHECK(Near(UniformScrollFactor(0.0f, 0.0f, 450.0f, 0.0f), 1.0f / 450.0f));
+    CHECK(Near(UniformScrollFactor(5000.0f, 300.0f, 300.0f, 0.0f), 4.0f));          // capped at 4x the max height
 }

@@ -3441,6 +3441,36 @@
    "risks": "None."
   },
   {
+   "id": "GATE_GC_DISPMODE",
+   "phase": "2a",
+   "group": "GameClient::update allow-list gates (0x64849E)",
+   "address": "0x6488A1",
+   "length": 5,
+   "original_hex": "e8 07 d5 ff ff",
+   "original_asm": [
+    "006488A1: e8 07 d5 ff ff  call 0x645dad  ; pending display-mode change, reached only if GC+0xC9 (preceded by cmp byte [ebx+0xC9],0 / je 0x6488A6 / mov ecx,ebx)"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:Gate_GC_DISPMODE>",
+   "stub": "Gate_GC_DISPMODE (CALLGATE Gate_GC_DISPMODE, IDX_GATE_GC_DISPMODE, 645DAD): cmp byte ptr [g_m60],0 / je .run / cmp byte ptr [g_uiTick],0 / je .skip / .run: jmp dword ptr [T_645DAD] (thiscall ECX=EBX=TheGameClient, no stack args, plain RET at 0x645F64; [esp]=0x6488A6) / .skip: ret (GC+0xC9 stays set; the next A-render services it). 30: .run == original. 60/A: .run. 60/B: .skip.",
+   "resume_address": "0x6488A6",
+   "live_after": "Nothing from the span: 0x6488A6 reloads ECX=[0xDE4830] and 0x6488AC reloads EAX=[ecx]. EBX=TheGameClient (used at 0x6488B1) is callee-saved, as are ESI/EDI/EBP. EFLAGS dead. x87 depth 0. No XMM live.",
+   "branch_into_span_check": "Interior 0x6488A2..0x6488A5: 0 hits (brute rel8/rel32/jcc32 decode over executable sections plus a whole-image abs32 scan, re-run independently by the verifier). 0x6488A6 is the je target from 0x64888F/0x64889D (span end, allowed). The adjacent GATE_GC_IGUI starts at 0x6488A6, so no overlap. Bytes identical in game.dat, zGameDats\\delayfix.dat and game820.dat.",
+   "purpose": "Keep the display-mode change A-only. 0x645DAD deletes and recreates TheShell, resets the D3D device and reloads MainMenu.apt. Requests come from Options apply 0x91EF0F->0x6455F3 and the AptMainMenu revert 0x91B2A7->0x645622. Without the gate, a request raised after A's check (e.g. during propagate 0x6324A1) runs inside the next B-render. This applies to in-game Options at 60 as well.",
+   "evidence": "menu/ui report + verifier: setters of GC+0xC9 are 0x64560B and 0x645640 only; ordering draw 0x648869 < Shell 0x648891 < check 0x648896 < propagate 0x6324A1.",
+   "dll_vars": [
+    {
+     "name": "g_m60",
+     "ctype": "uint8_t"
+    },
+    {
+     "name": "g_uiTick",
+     "ctype": "uint8_t"
+    }
+   ],
+   "risks": "Insurance only: most requests are already serviced on the same A-render. A request raised during the B half is delayed by one render (16.5 ms). Coverage entry 'GameClient::update 0x64849E / 0x6488A1' changes cls 'run' -> 'gate', with note 'display-mode change A-only (GATE_GC_DISPMODE)'."
+  },
+  {
    "id": "GATE_GC_IGUI",
    "phase": "2a",
    "group": "GameClient::update allow-list gates (0x64849E)",
@@ -5491,6 +5521,33 @@
    ],
    "branch_into_span_check": "0x517AA1..0x517AA6 no hit.",
    "risks": "None functional."
+  },
+  {
+   "id": "CAM_SCROLLNORM",
+   "phase": "2a",
+   "group": "camera feel (uniform scroll)",
+   "address": "0x48C959",
+   "length": 9,
+   "original_hex": "d9 43 3c d8 0d 04 19 bd 00",
+   "original_asm": [
+    "0x48C959: d9 43 3c  fld dword ptr [ebx+0x3c]   ; W3DView zoom",
+    "0x48C95C: d8 0d 04 19 bd 00  fmul dword ptr [0xbd1904]   ; 0.25"
+   ],
+   "kind": "jmp_detour",
+   "replacement_hex": "e9 <rel32:CAVE_SCROLLNORM> 90 90 90 90",
+   "stub": "CAVE_SCROLLNORM: cmp byte [g_uniformScroll],0 / je stock. On: fstp [tmp scalar]; SAVE_ALL; push ebx; call ScrollZoomFactor (cdecl float(view): zoom unless the player scrolls, else (clamped height above ground + reference terrain height) / W3DView+0x23F0); add esp,4; fstp [tmp factor]; RESTORE_ALL; fld [tmp scalar]; fld [tmp factor]; fmul [0xBD1904]; jmp 0x48C962. Off (stock): fld [ebx+0x3C]; fmul [0xBD1904]; jmp 0x48C962.",
+   "resume_address": "0x48C962",
+   "live_after": "x87: st0 = factor*0.25, st1 = scroll speed scalar (as stock: zoom*0.25 over the scalar returned by call [eax+0x10] at 0x48C956). EBX = view, ESI, EDI, EBP preserved; EAX/ECX/EDX dead (0x48C962 movss xmm0,[esi]); EFLAGS dead; XMM preserved by SAVE_ALL.",
+   "branch_into_span_check": "verify_sites.py sweep: no direct branch targets inside (0x48C959,0x48C962).",
+   "purpose": "Uniform camera pan speed (UniformScroll, default on, Ctrl+Shift+F8): stock scrollBy scales the step by the eye ABSOLUTE height (zoom), so panning is slower over low ground; the factor uses the height above the ground instead. Together with the scroll cutoff W3DView+0x2404 raised by UniformScrollOnC0 (camera keeps following the terrain while scrolling) the pan speed is uniform over hills and valleys. Player scrolling only; logic, game speed and saves unaffected (equivalent to scrolling at another speed).",
+   "evidence": "analysis docs/analysis/camera_scroll/synthesis.md: scrollBy 0x48C774, step = |delta| * zoom * 0.25 * scalar; zoom = eye height / 300; height freeze 0x48C309..0x48C31E above ScrollAmountCutoff (gamedata.ini:11275 = 50); view+0x2404 written only at 0x48B303 (ctor, 0) and 0x48BCD8 (init, from GD+0xAAC), read only at 0x48C314.",
+   "risks": "Deliberately changes the stock camera feel (default on at the user's request). Off: byte-exact stock path.",
+   "dll_vars": [
+    {
+     "name": "g_uniformScroll",
+     "ctype": "uint8_t"
+    }
+   ]
   }
  ],
  "coverage": [
@@ -6358,8 +6415,9 @@
    "function": "GameClient::update 0x64849E",
    "call_address": "0x6488A1",
    "callee": "0x645DAD pending display-mode change (if GC+0xC9)",
-   "cls": "run",
-   "note": "event; PLAN runs every render"
+   "cls": "gate",
+   "note": "display-mode change (device reset, shell rebuild) A-only",
+   "site_id": "GATE_GC_DISPMODE"
   },
   {
    "function": "GameClient::update 0x64849E",

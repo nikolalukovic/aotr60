@@ -32,6 +32,7 @@ extern volatile uint8_t g_pw2Open;        // scene-render window (SCENE_OPEN..SC
 extern volatile float g_presFrac;         // A-render presentation fraction min(1,(2k-1)/12)
 extern volatile float g_fracSaved;        // stock fraction saved while a window is open
 extern volatile uint8_t g_swapActive;     // W3D camera temporarily swapped
+extern volatile uint8_t g_uniformScroll;  // camera pan speed by height above ground (CAVE_SCROLLNORM)
 
 // ---- pacing ----
 extern volatile uint32_t g_pacerRanRid;
@@ -89,6 +90,7 @@ void __cdecl S2_RecordMkAndOpen(uint8_t* viewB4, uint32_t rebuilt);
 void __cdecl SceneOpen_A();
 void __cdecl SceneRestore();
 void __cdecl CamSwapEndGuard();
+float __cdecl ScrollZoomFactor(const uint8_t* view);
 bool __fastcall C5_CalcPhysicsXform(uint8_t* drawable, void* edx, float* out);
 uint32_t __fastcall LogicUpdateWrapper(uint8_t* logic, void* edx, int sub);
 void __fastcall LwLogicUpdateWrapper(uint8_t* lwLogic, void* edx);
@@ -114,6 +116,7 @@ constexpr uintptr_t kTheGameLogic = 0xDE412C;
 constexpr uintptr_t kTheGameClient = 0xDE4388;
 constexpr uintptr_t kGlobalData = 0xDE4364;
 constexpr uintptr_t kTacticalView = 0xDE447C;
+constexpr uintptr_t kInGameUI = 0xDE4830;
 constexpr uintptr_t kTheNetwork = 0xDE4468;
 constexpr uintptr_t kRecorder = 0xDE7CD8;
 constexpr uintptr_t kScriptDebugDll = 0xDE3B98;
@@ -170,6 +173,11 @@ void SetIntegratorVariablesForB(bool bRender); // B-render values vs stock value
 // camera.cpp
 void CamSwapEnd();      // restore the real camera if a swap is active (main thread)
 void CameraReset();     // forget the camera history (mode switches, resets)
+void UniformScrollInit(bool on);
+void UniformScrollToggle();
+void UniformScrollOnC0();    // keeps the tactical view's scroll cutoff in line with the switch (main thread)
+void UniformScrollOnReset(); // a new map: capture the reference height again
+float UniformScrollFactor(float hag, float hagDesired, float maxHeight, float refHeight); // pure, unit-tested
 
 // Living World strategic map presentation counters (camera.cpp, lw_present.cpp).
 struct LwStats {

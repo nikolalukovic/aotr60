@@ -121,6 +121,8 @@ void PUMP_NET_CAVE();
 void TCL_NET_CAVE();
 void BEGIN_RENDER_NET_CAVE();
 void SHUTDOWN_CAVE();
+void CAVE_SCROLLNORM();
+void Gate_GC_DISPMODE();
 }
 
 namespace {
@@ -271,6 +273,9 @@ const Symbol kSymbols[] = {
     SYM(TCL_NET_CAVE),
     SYM(BEGIN_RENDER_NET_CAVE),
     SYM(SHUTDOWN_CAVE),
+    // camera feel and safety
+    SYM(CAVE_SCROLLNORM),
+    SYM(Gate_GC_DISPMODE),
 };
 
 #undef SYM

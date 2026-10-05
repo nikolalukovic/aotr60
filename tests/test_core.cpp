@@ -28,6 +28,7 @@ TEST(config_defaults_when_empty)
     CHECK(!cfg.allowDelayfix);
     CHECK(cfg.livingWorldMap);
     CHECK_EQ(cfg.splitPresent, 1);
+    CHECK(cfg.uniformScroll);
     CHECK(cfg.splitPresentEarly);
     CHECK(cfg.repayProportional);
     CHECK(!cfg.splitPresentNative);
@@ -43,6 +44,8 @@ TEST(config_parses_split_present)
     Config b = ParseConfig("SplitPresent = 2\nSplitPresentNative = yes\n", &warnings);
     CHECK_EQ(b.splitPresent, 2);
     CHECK(b.splitPresentNative);
+    Config u = ParseConfig("UniformScroll = 0\n", &warnings);
+    CHECK(!u.uniformScroll);
     Config c = ParseConfig("SplitPresent = on\n", &warnings);
     CHECK_EQ(c.splitPresent, 1);
     CHECK(warnings.empty());

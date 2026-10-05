@@ -25,6 +25,10 @@ const char kDefaultConfigText[] =
     "UnitInterpolation = 1\n"
     "CameraInterpolation = 1\n"
     "\n"
+    "; 1 = the camera pans at the same speed over high and low ground (stock: slower over low ground; single player).\n"
+    "; Ctrl+Shift+F8 switches it while playing.\n"
+    "UniformScroll = 1\n"
+    "\n"
     "; Large battles: a long game-logic step would hold the screen; 1 = show the inserted frame in the middle of it.\n"
     "; 0 = off. Ctrl+Shift+F9 switches it while playing.\n"
     "SplitPresent = 1\n"
@@ -127,6 +131,9 @@ Config ParseConfig(std::string_view text, std::string* warnings)
         }
         else if (EqualsNoCase(key, "CameraInterpolation")) {
             ok = ParseBool(value, cfg.cameraInterpolation);
+        }
+        else if (EqualsNoCase(key, "UniformScroll")) {
+            ok = ParseBool(value, cfg.uniformScroll);
         }
         else if (EqualsNoCase(key, "PresentPacing")) {
             ok = ParseBool(value, cfg.presentPacing);

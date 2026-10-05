@@ -33,6 +33,8 @@ EXTERN g_lp4b:BYTE, g_uiPart4b:BYTE, g_wanim4b:BYTE
 EXTERN g_featPresent:BYTE, g_radarAFrame:DWORD
 EXTERN g_uiSeqLast:DWORD, g_lwRestoreN:DWORD
 EXTERN g_cpDue:BYTE, g_ppState:DWORD, g_cpFx:BYTE
+EXTERN g_uniformScroll:BYTE
+EXTERN ScrollZoomFactor:PROC
 
 EXTERN OnPreRender:PROC, OnPostRender:PROC, OnEngineReset:PROC
 EXTERN AotR60_Pacer:PROC, AotR60_PresentSkip:PROC, AotR60_PresentDone:PROC
@@ -165,6 +167,8 @@ DEFTARGET 441A82
 DEFTARGET 516C45
 DEFTARGET 517B3A
 DEFTARGET 517AA7
+DEFTARGET 48C962
+DEFTARGET 645DAD
 DEFTARGET 48B7B6
 DEFTARGET 4FD25A
 DEFTARGET 4CF434
@@ -1762,5 +1766,40 @@ SHUTDOWN_CAVE PROC
     push 0B78DB8h
     jmp dword ptr [T_517AA7]
 SHUTDOWN_CAVE ENDP
+
+; ===============================================================================================================
+; Camera feel and safety
+; ===============================================================================================================
+
+; CAM_SCROLLNORM 0x48C959 'fld [ebx+0x3C] / fmul [0xBD1904]' in W3DView::scrollBy (EBX = view; st0 = the scroll
+; speed scalar just returned by the camera settings). Uniform scroll replaces zoom by ScrollZoomFactor(view); off:
+; the original two instructions.
+.data
+g_scrollScalarTmp DD 0
+g_scrollFactorTmp DD 0
+.code
+CAVE_SCROLLNORM PROC
+    cmp byte ptr [g_uniformScroll], 0
+    je stock
+    fstp dword ptr [g_scrollScalarTmp]  ; x87 empty for the C++ call (the game runs 24-bit precision: exact)
+    SAVE_ALL
+    push ebx
+    call ScrollZoomFactor               ; cdecl float(view) -> st0
+    add esp, 4
+    fstp dword ptr [g_scrollFactorTmp]
+    RESTORE_ALL
+    fld dword ptr [g_scrollScalarTmp]   ; st1 = scalar
+    fld dword ptr [g_scrollFactorTmp]   ; st0 = factor (in place of zoom)
+    fmul dword ptr ds:[0BD1904h]
+    jmp dword ptr [T_48C962]
+stock:
+    fld dword ptr [ebx + 3Ch]
+    fmul dword ptr ds:[0BD1904h]
+    jmp dword ptr [T_48C962]
+CAVE_SCROLLNORM ENDP
+
+; GATE_GC_DISPMODE 0x6488A1 'call 0x645DAD' (pending display-mode change: device reset, shell rebuild): A-only, so
+; a resolution change applied at 60 FPS never runs inside a B-render.
+CALLGATE Gate_GC_DISPMODE, IDX_GATE_GC_DISPMODE, 645DAD
 
 END

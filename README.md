@@ -6,7 +6,8 @@ second); AotR60 inserts one extra, presentation-only frame between every two sto
 and effects half a step in between. Save games stay compatible both ways.
 
 Where it is active: campaign, Living World (the strategic map and its battles), skirmish against the AI and
-tutorials. Menus, multiplayer, replays and Create-a-Hero stay at the stock 30 FPS. On the Living World map, fades,
+tutorials. Menus, multiplayer, replays and Create-a-Hero stay at the stock 30 FPS (AotR's menus are Flash animations
+authored at 30 fps over a still image, so 60 FPS would only show every picture twice). On the Living World map, fades,
 the switch to and from battles and other transitions run at 30 FPS for a moment.
 
 ## Install
@@ -52,6 +53,7 @@ The game window's title bar shows the current state (in windowed mode), for exam
 | Ctrl+Shift+F11 | 60 FPS on / off (switches at the next frame pair) |
 | Ctrl+Shift+F10 | smooth unit/camera interpolation on / off |
 | Ctrl+Shift+F9 | split present (large battles, see below) on / off |
+| Ctrl+Shift+F8 | uniform camera scroll (see below) on / off |
 
 If the PC cannot hold 60 FPS for a sustained period, AotR60 falls back to 30 FPS for 30 s (doubling up to 8 min on
 repeats) and then tries again. Isolated hitches do not trigger this.
@@ -63,6 +65,13 @@ the already drawn in-between frame in the middle of the step instead: a timer th
 thread presents the frame from cheap checkpoints inside the logic (all Direct3D calls stay on the game thread). One long
 hold becomes two short ones. The logic itself is untouched. `SplitPresent = 0` or Ctrl+Shift+F9 switches it off.
 
+**Uniform camera scroll.** The stock camera pans slower over low ground and faster over high ground (the scroll
+step is scaled by the camera's absolute height), and it freezes the camera height while scrolling. With
+`UniformScroll = 1` (default, single player) the step uses the height above the ground and the camera keeps following
+the terrain while scrolling, so panning has the same speed over high and low ground; the speed where you first scroll
+on a map is unchanged. It applies at 30 and 60 FPS, affects only player scrolling (not scripted cameras) and does not
+change game logic or speed. `UniformScroll = 0` or Ctrl+Shift+F8 restores the stock camera.
+
 ## Settings
 
 `%APPDATA%\Age of the Ring\aotr60\aotr60.ini` (created on first start; delete it to restore the defaults):
@@ -73,6 +82,7 @@ hold becomes two short ones. The logic itself is untouched. `SplitPresent = 0` o
 | `Pacing` | stock | `stock` = exact stock speed; `nominal` = perfectly even 1000/60 ms frames, game 1 % slower |
 | `UnitInterpolation` | 1 | draw units half a step in between on the inserted frames |
 | `CameraInterpolation` | 1 | interpolate the camera picture too (needs UnitInterpolation) |
+| `UniformScroll` | 1 | same camera pan speed over high and low ground, single player (0 = stock camera) |
 | `PresentPacing` | 1 | without vsync: space the presented frames evenly |
 | `SplitPresent` | 1 | large battles: show the in-between frame in the middle of a long logic step (0 = off; 2 = profile, 3 = stress: testing only) |
 | `SplitPresentEarly` | 1 | with split present: start the frame before a predicted heavy logic step early |

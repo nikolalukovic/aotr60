@@ -41,6 +41,20 @@ using HeightSampleFn = float (*)(const void* ctx, float x, float y);
 float SlopeScrollFactor(HeightSampleFn sample, const void* ctx, float px, float py, float fx, float fy, float stepFwd,
                         float stepRight, const SlopeScrollParams& p);
 
+// One vertex of a projected decal's terrain patch (decal projector 0x50C23A, stride 0x20).
+struct DecalVertex {
+    float x, y, z;
+    uint32_t color; // ARGB
+    float u, v;     // texture coordinates; the decal texture covers [0, 1]
+    float u2, v2;
+};
+static_assert(sizeof(DecalVertex) == 0x20);
+// The patch is whole terrain cells (cols x rows vertices, row by row) around the decal square, so it can reach up to
+// a cell past the texture square, where the texture's edge texels repeat. Moves each outer vertex along its grid edge
+// towards its inner neighbour until u and v are inside [0, 1] (position, height, texture coordinates and colour
+// interpolated along the edge): the patch then ends exactly on the texture square. Vertices inside are untouched.
+void ClampDecalPatchToTexture(DecalVertex* v, int cols, int rows);
+
 struct CameraStats {
     uint32_t bSwaps = 0;
     uint32_t bNoRecord = 0;

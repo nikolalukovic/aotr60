@@ -327,6 +327,8 @@ inline constexpr uint8_t kCAM_SCROLLNORM_original[] = {0xD9, 0x43, 0x3C, 0xD8, 0
 inline constexpr Token kCAM_SCROLLNORM_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_SCROLLNORM"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
 inline constexpr uint8_t kUI_CLAIM_SNAP_original[] = {0x8B, 0x47, 0x34, 0x3D, 0x00, 0x20, 0x00, 0x00};
 inline constexpr Token kUI_CLAIM_SNAP_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_CLAIMSNAP"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kUI_CLAIM_EDGE_original[] = {0x8B, 0x45, 0xF0, 0x83, 0x65, 0xD8, 0x00};
+inline constexpr Token kUI_CLAIM_EDGE_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_CLAIMEDGE"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
 
 inline constexpr Site kSites[] = {
     {"C0_PRERENDER", Phase::Phase2a, Kind::CallGate, 0x6325CF, 6, kC0_PRERENDER_original, kC0_PRERENDER_replacement, 3},
@@ -480,9 +482,10 @@ inline constexpr Site kSites[] = {
     {"SP_SHUTDOWN", Phase::PhaseSp, Kind::FuncDetour, 0x517AA0, 7, kSP_SHUTDOWN_original, kSP_SHUTDOWN_replacement, 4},
     {"CAM_SCROLLNORM", Phase::Phase2a, Kind::JmpDetour, 0x48C959, 9, kCAM_SCROLLNORM_original, kCAM_SCROLLNORM_replacement, 6},
     {"UI_CLAIM_SNAP", Phase::Phase2a, Kind::JmpDetour, 0x50C488, 8, kUI_CLAIM_SNAP_original, kUI_CLAIM_SNAP_replacement, 5},
+    {"UI_CLAIM_EDGE", Phase::Phase2a, Kind::JmpDetour, 0x50D2F5, 7, kUI_CLAIM_EDGE_original, kUI_CLAIM_EDGE_replacement, 4},
 };
 
-inline constexpr uint32_t kSiteCount = 151;
+inline constexpr uint32_t kSiteCount = 152;
 
 // Index of each site in kSites (telemetry counters are indexed the same way).
 enum Index : uint32_t {
@@ -637,6 +640,7 @@ enum Index : uint32_t {
     SP_SHUTDOWN = 148,
     CAM_SCROLLNORM = 149,
     UI_CLAIM_SNAP = 150,
+    UI_CLAIM_EDGE = 151,
 };
 
 } // namespace sites

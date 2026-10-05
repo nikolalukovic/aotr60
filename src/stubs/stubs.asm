@@ -33,8 +33,8 @@ EXTERN g_lp4b:BYTE, g_uiPart4b:BYTE, g_wanim4b:BYTE
 EXTERN g_featPresent:BYTE, g_radarAFrame:DWORD
 EXTERN g_uiSeqLast:DWORD, g_lwRestoreN:DWORD
 EXTERN g_cpDue:BYTE, g_ppState:DWORD, g_cpFx:BYTE
-EXTERN g_uniformScroll:BYTE, g_claimSmooth:BYTE
-EXTERN ScrollZoomFactor:PROC
+EXTERN g_uniformScroll:BYTE, g_claimSmooth:BYTE, g_claimFrame:DWORD
+EXTERN ScrollZoomFactor:PROC, ClaimDecalClampEdges:PROC
 
 EXTERN OnPreRender:PROC, OnPostRender:PROC, OnEngineReset:PROC
 EXTERN AotR60_Pacer:PROC, AotR60_PresentSkip:PROC, AotR60_PresentDone:PROC
@@ -170,6 +170,7 @@ DEFTARGET 517AA7
 DEFTARGET 48C962
 DEFTARGET 50C490
 DEFTARGET 50C4DE
+DEFTARGET 50D2FC
 DEFTARGET 645DAD
 DEFTARGET 48B7B6
 DEFTARGET 4FD25A
@@ -1807,7 +1808,8 @@ CAVE_SCROLLNORM ENDP
 ; snaps a terrain-resource claim decal (type 0x2000) to the resource grid (x - fmod(x, cell), 0x50C492..0x50C4DB), so
 ; the resource area of a building being placed jumps from cell to cell. With g_claimSmooth (SmoothResourceArea,
 ; single player) the decal of the building being placed (TheInGameUI+0x588 -> claimant -> +0x1C) keeps the
-; building's position. Only EAX and EFLAGS are used; both are dead at 0x50C4DE (sites.json live_after).
+; building's position, and g_claimFrame marks this projector call for CAVE_CLAIMEDGE. Only EAX and EFLAGS are used;
+; both are dead at 0x50C4DE (sites.json live_after).
 CAVE_CLAIMSNAP PROC
     cmp byte ptr [g_claimSmooth], 0
     je stock
@@ -1825,12 +1827,33 @@ CAVE_CLAIMSNAP PROC
     cmp dword ptr [edi + 34h], 2000h
     jne stock
     RUNCNT IDX_UI_CLAIM_SNAP
+    mov dword ptr [g_claimFrame], ebp   ; CAVE_CLAIMEDGE fixes this call's terrain patch
     jmp dword ptr [T_50C4DE]            ; skip the snap
 stock:
+    mov dword ptr [g_claimFrame], 0
     mov eax, dword ptr [edi + 34h]
     cmp eax, 2000h
     jmp dword ptr [T_50C490]            ; jne 0x50C4DE on the flags of this cmp
 CAVE_CLAIMSNAP ENDP
+
+; UI_CLAIM_EDGE 0x50D2F5 'mov eax,[ebp-10h]; and dword ptr [ebp-28h],0' in the decal projector, after the terrain
+; patch's vertices and claim colours are written (every path to here passed UI_CLAIM_SNAP in the same call). For the
+; call CAVE_CLAIMSNAP marked: ClaimDecalClampEdges pulls the patch's outer vertices onto the texture square (off the
+; resource grid the whole-cell patch reaches past it and the clamped texture repeats its rim there).
+CAVE_CLAIMEDGE PROC
+    cmp dword ptr [g_claimFrame], ebp
+    jne stock
+    RUNCNT IDX_UI_CLAIM_EDGE
+    SAVE_ALL
+    push ebp
+    call ClaimDecalClampEdges           ; cdecl void(frame); clears g_claimFrame
+    add esp, 4
+    RESTORE_ALL
+stock:
+    mov eax, dword ptr [ebp - 10h]
+    and dword ptr [ebp - 28h], 0
+    jmp dword ptr [T_50D2FC]            ; EFLAGS dead: cmp eax,[ebp-20h] there
+CAVE_CLAIMEDGE ENDP
 
 ; GATE_GC_DISPMODE 0x6488A1 'call 0x645DAD' (pending display-mode change: device reset, shell rebuild): A-only, so
 ; a resolution change applied at 60 FPS never runs inside a B-render.

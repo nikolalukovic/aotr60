@@ -5562,7 +5562,7 @@
    ],
    "kind": "jmp_detour",
    "replacement_hex": "e9 <rel32:CAVE_CLAIMSNAP> 90 90 90",
-   "stub": "CAVE_CLAIMSNAP: cmp byte [g_claimSmooth],0 / je stock. On: eax = [0xDE4830] (TheInGameUI), eax = [eax+0x588] (placement claimant holder), eax = [eax] (claimant), each null -> stock; cmp edi,[eax+0x1C] (the claimant's decal) / jne stock; cmp dword [edi+0x34],0x2000 / jne stock; RUNCNT; jmp 0x50C4DE (skip the snap: the decal keeps the building's position). Stock: mov eax,[edi+0x34]; cmp eax,0x2000; jmp 0x50C490 (the jne 0x50C4DE there consumes the flags of this cmp).",
+   "stub": "CAVE_CLAIMSNAP: cmp byte [g_claimSmooth],0 / je stock. On: eax = [0xDE4830] (TheInGameUI), eax = [eax+0x588] (placement claimant holder), eax = [eax] (claimant), each null -> stock; cmp edi,[eax+0x1C] (the claimant's decal) / jne stock; cmp dword [edi+0x34],0x2000 / jne stock; RUNCNT; mov [g_claimFrame],ebp (marks this call for UI_CLAIM_EDGE); jmp 0x50C4DE (skip the snap: the decal keeps the building's position). Stock: mov [g_claimFrame],0; mov eax,[edi+0x34]; cmp eax,0x2000; jmp 0x50C490 (the jne 0x50C4DE there consumes the flags of this cmp).",
    "resume_address": "0x50C490",
    "live_after": "Stock exit 0x50C490: EAX = [edi+0x34], EFLAGS of cmp eax,0x2000 (jne at 0x50C490), as the displaced code. Skip exit 0x50C4DE: the stock not-0x2000 path's state; EAX dead (0x50C4DE mov ecx,[0xDE4690]; EAX is written at 0x50C4FD/0x50C55A before any read), EFLAGS dead (test ecx,ecx at 0x50C4E4). EDI, ESI, EBX, EBP, ESP, x87 (depth 0) and XMM0-7 untouched (XMM5 = 0 on every path into 0x50C488: zeroed at 0x50C24A/0x50C485, only compared in between; read at 0x50C4EE).",
    "branch_into_span_check": "verify_sites.py sweep: no direct branch targets inside (0x50C488,0x50C490); 0x50C488 itself is the target of je 0x50C3EB.",
@@ -5573,6 +5573,37 @@
     {
      "name": "g_claimSmooth",
      "ctype": "uint8_t"
+    },
+    {
+     "name": "g_claimFrame",
+     "ctype": "uint32_t"
+    }
+   ]
+  },
+  {
+   "id": "UI_CLAIM_EDGE",
+   "phase": "2a",
+   "group": "UI feel (resource area)",
+   "address": "0x50D2F5",
+   "length": 7,
+   "original_hex": "8b 45 f0 83 65 d8 00",
+   "original_asm": [
+    "0x50D2F5: 8b 45 f0  mov eax, dword ptr [ebp-0x10]   ; first patch row",
+    "0x50D2F8: 83 65 d8 00  and dword ptr [ebp-0x28], 0   ; vertex index"
+   ],
+   "kind": "jmp_detour",
+   "replacement_hex": "e9 <rel32:CAVE_CLAIMEDGE> 90 90",
+   "stub": "CAVE_CLAIMEDGE: cmp [g_claimFrame],ebp / jne stock. Marked call: RUNCNT; SAVE_ALL; push ebp; call ClaimDecalClampEdges (cdecl void(frame): clears g_claimFrame; vertices [ebp-0xE8] (stride 0x20: x,y,z,ARGB,u,v,u2,v2), columns [ebp-0x2C], rows [ebp-0x9C]; camera_math ClampDecalPatchToTexture moves each outer vertex along its grid edge towards its inner neighbour until u and v are in [0,1], all attributes interpolated); add esp,4; RESTORE_ALL. Then (both paths) mov eax,[ebp-0x10]; and dword [ebp-0x28],0; jmp 0x50D2FC.",
+   "resume_address": "0x50D2FC",
+   "live_after": "As the displaced code: EAX = [ebp-0x10], [ebp-0x28] = 0; EFLAGS dead (cmp eax,[ebp-0x20] at 0x50D2FC). EBX (projector), ESI (index buffer write pointer from 0x50D085), EDI, EBP, ESP and XMM0-7 preserved by SAVE_ALL; x87 depth 0 (no x87 between 0x50D127 and here; the C++ code uses SSE).",
+   "branch_into_span_check": "verify_sites.py sweep: no direct branch targets inside (0x50D2F5,0x50D2FC); 0x50D2F5 itself is the target of jne 0x50D26B, je 0x50D281 and jg 0x50D2A8 (all three reach the displaced code through the jump).",
+   "purpose": "With UI_CLAIM_SNAP the placement decal sits off the resource grid, but the projector builds its terrain patch from whole 10-unit cells (floor/ceil of the decal square / 10, 0x50CE12..0x50CEA4), so the patch reaches up to a cell past the texture square; the clamped texture repeats its edge texels there and farmreticle02's rim touches the edge at N/E/W/S: small grid-stepping squares beside the circle. Pulling the outer vertices onto the square makes the patch end exactly where the stock snapped patch ended; the circle itself does not move.",
+   "evidence": "Vertex loop 0x50D127..0x50D25B: x = i*10, y = j*10, z = max(height(i,j)*scale, water), [v+0x10]/[v+0x14] affine in (x - pos.x, y - pos.y, z), colour [v+0xC] = [ebp-0x28]; stride 0x20, row-major, columns [ebp-0x2C] (0x50CF9D), rows [ebp-0x9C] (0x50CFA0), each at most 0x68 (0x50CF1A/0x50CF54); base [ebp-0xE8] (0x50D115). Claim colours 0x50D264..0x50D2F3 (0x75C1A9 per vertex) are written before 0x50D2F5; the index loop 0x50D2F5..0x50D40E only uses vertex indices (diagonal per cell 0x4AD985). Texture farmreticle02.dds: disc whose rim reaches the texture edge at the four midpoints. [ebp-0x9C] is reused at 0x50D30D, after the site.",
+   "risks": "Visual only, only for the call CAVE_CLAIMSNAP marked (the unsnapped placement decal); otherwise one compare. Reads the locked dynamic vertex buffer as 0x75C1A9 already does. Off: stock path.",
+   "dll_vars": [
+    {
+     "name": "g_claimFrame",
+     "ctype": "uint32_t"
     }
    ]
   }

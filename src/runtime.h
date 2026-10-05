@@ -34,6 +34,7 @@ extern volatile float g_fracSaved;        // stock fraction saved while a window
 extern volatile uint8_t g_swapActive;     // W3D camera temporarily swapped
 extern volatile uint8_t g_uniformScroll;  // camera pan speed by height above ground (CAVE_SCROLLNORM)
 extern volatile uint8_t g_claimSmooth;    // resource area of a building being placed not snapped (CAVE_CLAIMSNAP)
+extern volatile uint32_t g_claimFrame;    // EBP of the decal projector call drawing that decal (CAVE_CLAIMEDGE)
 
 // ---- pacing ----
 extern volatile uint32_t g_pacerRanRid;

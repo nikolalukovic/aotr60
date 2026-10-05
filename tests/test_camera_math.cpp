@@ -3,7 +3,10 @@
 #include "camera_math.h"
 #include "runtime.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <vector>
 
 namespace {
 
@@ -183,6 +186,76 @@ TEST(slope_scroll_factor_uses_the_chord_of_the_step)
     CHECK(Near(Slope({0, 1000, 300, 0}, 990, 25, 0), 1.156384f, 1e-4f));
     CHECK(Near(Slope({0, 1000, 600, 0}, 980, 40, 0), 1.390999f, 1e-4f));
     CHECK(Near(Slope({0, 1000, 0, 600}, -10, 25, 0), 0.736707f, 1e-4f)); // entering a facing ramp
+}
+
+namespace {
+
+// A decal square [x0, x0 + size] x [y0, y0 + size] on a terrain patch of 10-unit cells covering it (floor/ceil, as the
+// projector builds it); height z = 2x + 3y, alpha = 100 per column (at most 255).
+struct Patch {
+    std::vector<DecalVertex> v;
+    int cols = 0, rows = 0;
+};
+
+Patch MakePatch(float x0, float y0, float size)
+{
+    Patch p;
+    int i0 = static_cast<int>(std::floor(x0 / 10.0f));
+    int i1 = static_cast<int>(std::ceil((x0 + size) / 10.0f));
+    int j0 = static_cast<int>(std::floor(y0 / 10.0f));
+    int j1 = static_cast<int>(std::ceil((y0 + size) / 10.0f));
+    p.cols = i1 - i0 + 1;
+    p.rows = j1 - j0 + 1;
+    for (int j = j0; j <= j1; ++j) {
+        for (int i = i0; i <= i1; ++i) {
+            float x = i * 10.0f;
+            float y = j * 10.0f;
+            DecalVertex d{x, y, 2.0f * x + 3.0f * y, static_cast<uint32_t>(std::min((i - i0) * 100, 255)) << 24 | 0x00FFFFFFu,
+                          (x - x0) / size, (y - y0) / size, 0.0f, 0.0f};
+            p.v.push_back(d);
+        }
+    }
+    return p;
+}
+
+} // namespace
+
+TEST(decal_patch_ends_on_the_texture_square)
+{
+    Patch p = MakePatch(3.0f, 14.0f, 300.0f); // 3 units past a grid line on the left, 6 on the bottom
+    Patch before = p;
+    ClampDecalPatchToTexture(p.v.data(), p.cols, p.rows);
+    for (int r = 0; r < p.rows; ++r) {
+        for (int c = 0; c < p.cols; ++c) {
+            const DecalVertex& d = p.v[r * p.cols + c];
+            CHECK(d.u >= 0.0f && d.u <= 1.0f);
+            CHECK(d.v >= 0.0f && d.v <= 1.0f);
+            CHECK(Near(d.z, 2.0f * d.x + 3.0f * d.y, 1e-2f));       // still on the plane: moved along the grid edges
+            CHECK(Near(d.u, (d.x - 3.0f) / 300.0f, 1e-5f));         // the texture stays where it was
+            CHECK(Near(d.v, (d.y - 14.0f) / 300.0f, 1e-5f));
+            bool outer = r == 0 || c == 0 || r == p.rows - 1 || c == p.cols - 1;
+            if (!outer) {
+                CHECK(std::memcmp(&d, &before.v[r * p.cols + c], sizeof d) == 0);
+            }
+        }
+    }
+    const DecalVertex& corner = p.v[0];
+    CHECK(Near(corner.x, 3.0f) && Near(corner.y, 14.0f));
+    const DecalVertex& top = p.v[(p.rows - 1) * p.cols + p.cols - 1];
+    CHECK(Near(top.x, 303.0f) && Near(top.y, 314.0f));
+    // colour interpolated along the edge: the left column moved 0.3 of the way to column 1 (alpha 0 -> 100)
+    CHECK_EQ(p.v[p.cols].color >> 24, 30u);
+    CHECK_EQ(p.v[p.cols].color & 0x00FFFFFFu, 0x00FFFFFFu);
+}
+
+TEST(decal_patch_on_the_grid_is_unchanged)
+{
+    Patch p = MakePatch(20.0f, 40.0f, 300.0f); // the stock snapped case: the patch is the texture square
+    Patch before = p;
+    ClampDecalPatchToTexture(p.v.data(), p.cols, p.rows);
+    CHECK(std::memcmp(p.v.data(), before.v.data(), p.v.size() * sizeof(DecalVertex)) == 0);
+    ClampDecalPatchToTexture(nullptr, 5, 5);
+    ClampDecalPatchToTexture(p.v.data(), 1, p.rows);
 }
 
 TEST(slope_scroll_factor_diagonal_is_screen_weighted)

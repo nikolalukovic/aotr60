@@ -71,6 +71,50 @@ float ClampF(float v, float lo, float hi)
     return v < lo ? lo : (v > hi ? hi : v);
 }
 
+DecalVertex LerpVertex(const DecalVertex& a, const DecalVertex& b, float t)
+{
+    auto mix = [t](float p, float q) { return p + (q - p) * t; };
+    DecalVertex r{mix(a.x, b.x), mix(a.y, b.y), mix(a.z, b.z), 0, mix(a.u, b.u), mix(a.v, b.v), mix(a.u2, b.u2),
+                  mix(a.v2, b.v2)};
+    for (int shift = 0; shift < 32; shift += 8) {
+        float p = static_cast<float>((a.color >> shift) & 0xFF);
+        float q = static_cast<float>((b.color >> shift) & 0xFF);
+        r.color |= static_cast<uint32_t>(mix(p, q) + 0.5f) << shift;
+    }
+    return r;
+}
+
+// Moves `outer` towards `inner` until its texture coordinates that change along that edge are inside [0, 1].
+void PullInside(DecalVertex& outer, const DecalVertex& inner)
+{
+    float t = 0.0f;
+    float* const comps[2] = {&outer.u, &outer.v};
+    const float innerComps[2] = {inner.u, inner.v};
+    float bounds[2] = {-1.0f, -1.0f};
+    for (int k = 0; k < 2; ++k) {
+        float o = *comps[k];
+        float i = innerComps[k];
+        float bound = o < 0.0f ? 0.0f : (o > 1.0f ? 1.0f : -1.0f);
+        if (bound < 0.0f || !(std::fabs(i - o) > 1e-6f)) {
+            continue; // inside, or does not change along this edge
+        }
+        float tk = (bound - o) / (i - o);
+        if (tk > 0.0f) {
+            t = tk > t ? tk : t;
+            bounds[k] = bound;
+        }
+    }
+    if (!(t > 0.0f)) {
+        return;
+    }
+    outer = LerpVertex(outer, inner, t < 1.0f ? t : 1.0f);
+    for (int k = 0; k < 2; ++k) {
+        if (bounds[k] >= 0.0f && (bounds[k] == 0.0f ? *comps[k] < 0.0f : *comps[k] > 1.0f)) {
+            *comps[k] = bounds[k]; // rounding
+        }
+    }
+}
+
 bool ExtentChanged(float a, float b, float limit)
 {
     float scale = std::fabs(a) > std::fabs(b) ? std::fabs(a) : std::fabs(b);
@@ -138,6 +182,22 @@ float SlopeScrollFactor(HeightSampleFn sample, const void* ctx, float px, float 
         g = 1.0f + (g - 1.0f) * t;
     }
     return g;
+}
+
+void ClampDecalPatchToTexture(DecalVertex* v, int cols, int rows)
+{
+    if (!v || cols < 2 || rows < 2) {
+        return;
+    }
+    for (int r = 0; r < rows; ++r) { // along the rows first, then the columns (corners get both)
+        DecalVertex* row = v + r * cols;
+        PullInside(row[0], row[1]);
+        PullInside(row[cols - 1], row[cols - 2]);
+    }
+    for (int c = 0; c < cols; ++c) {
+        PullInside(v[c], v[cols + c]);
+        PullInside(v[(rows - 1) * cols + c], v[(rows - 2) * cols + c]);
+    }
 }
 
 bool InterpolateCameraHalfway(const CameraPose& a, const CameraPose& b, CameraPose* out,

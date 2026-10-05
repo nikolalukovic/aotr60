@@ -606,6 +606,21 @@ void SmoothResourceAreaToggle()
     SmoothResourceAreaOnC0();
 }
 
+// CAVE_CLAIMEDGE (0x50D2F5, after the claim colours are written): the projector call that drew the placement decal
+// unsnapped. Its terrain patch is whole 10-unit cells around the decal square; off the grid it reaches up to a cell
+// past the square, where the clamped texture repeats its edge texels (the rim touches the edge at N/E/W/S: small
+// squares). Pull the outer vertices onto the square. Locals: vertices [ebp-0xE8], columns [ebp-0x2C], rows [ebp-0x9C].
+extern "C" void __cdecl ClaimDecalClampEdges(uint8_t* frame)
+{
+    g_claimFrame = 0;
+    DecalVertex* verts = *reinterpret_cast<DecalVertex**>(frame - 0xE8);
+    int cols = *reinterpret_cast<const int32_t*>(frame - 0x2C);
+    int rows = *reinterpret_cast<const int32_t*>(frame - 0x9C);
+    if (verts && cols >= 2 && rows >= 2 && cols <= 0x68 && rows <= 0x68) { // at most 0x68 per side (0x50CF1A/0x50CF54)
+        ClampDecalPatchToTexture(verts, cols, rows);
+    }
+}
+
 void SmoothResourceAreaOnC0()
 {
     uint8_t* gl = Ptr(kTheGameLogic);

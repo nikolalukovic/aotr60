@@ -1,0 +1,19 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "x86",
+      "displayName": "MSVC x86 (Visual Studio 18 2026, Win32)",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "Win32",
+      "binaryDir": "${sourceDir}/build"
+    }
+  ],
+  "buildPresets": [
+    { "name": "release", "configurePreset": "x86", "configuration": "Release" },
+    { "name": "debug", "configurePreset": "x86", "configuration": "Debug" }
+  ],
+  "testPresets": [
+    { "name": "release", "configurePreset": "x86", "configuration": "Release", "output": { "outputOnFailure": true } }
+  ]
+}

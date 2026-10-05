@@ -475,9 +475,9 @@ All results are committed as `docs/verification/*.md` via `tools/report.py`.
 
 | Build | `.text` | `.danetta` | `.angmar` | SHA-256 |
 |---|---|---|---|---|
-| AotR normal (`rotwk\game.dat`) | 879A36B4 | 6DCD48D0 | 609926AF | `cc08275d60ff8e3bfd4374c29d61304dea8336e6dd00ab8add88b1df95a705dc` |
-| AotR delayfix (launcher PvP mode) | DEDA7CF9 | 63F5DCE6 | CCE952A4 | `035da15c626af6cd1663d1886deea605464ec6776f2c5f1d24570c2be6d73e61` |
+| AotR normal (`rotwk\game.dat`) | 879A36B4 | 6DCD48D0 | 88C16692 | `cc08275d60ff8e3bfd4374c29d61304dea8336e6dd00ab8add88b1df95a705dc` |
+| AotR delayfix (launcher PvP mode) | DEDA7CF9 | 63F5DCE6 | 40B06044 | `035da15c626af6cd1663d1886deea605464ec6776f2c5f1d24570c2be6d73e61` |
 
-- CRCs are zlib CRC32 over [VA, VA+VirtualSize), computed in DllMain before AotR writes runtime data into `.danetta`.
+- CRCs are zlib CRC32 over [VA, VA+VirtualSize) of the loaded image (zero-filled beyond raw data: `.angmar` has VirtualSize 0x1000 but 0x200 raw bytes; the earlier analysis value 609926AF covered only the raw bytes), computed in DllMain before AotR writes runtime data into `.danetta`.
 - Shared values: TimeDateStamp `0x460DA09E`, AddressOfEntryPoint RVA **`0x63D082`** (VA `0xA3D082`).
 - Every site's original span is verified before anything is written.

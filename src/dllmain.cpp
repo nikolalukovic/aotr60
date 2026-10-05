@@ -79,17 +79,18 @@ void Startup()
     switch (info.build) {
     case GameBuild::AotrNormal: {
         InitIntegratorVariables();
-        FrameControlInit(cfg);
         PacerInit(cfg);
         TelemetryInit(cfg);
         std::string error;
         size_t count = 0;
-        if (InstallSites(&error, &count)) {
+        bool installed = InstallSites(&error, &count);
+        FrameControlInit(cfg, installed);
+        if (installed) {
             Log("host: known build; %zu patch sites installed (60 FPS %s)", count,
-                cfg.enabled ? "enabled when a supported game is running" : "disabled in aotr60.ini");
+                cfg.enabled ? "enabled when a supported game is running" : "off until Ctrl+Shift+F11 (Enabled=0)");
         }
         else {
-            Log("host: patch verification failed - nothing patched, running stock 30 FPS: %s", error.c_str());
+            Log("host: patch install failed, game image left unchanged - running stock 30 FPS: %s", error.c_str());
         }
         break;
     }

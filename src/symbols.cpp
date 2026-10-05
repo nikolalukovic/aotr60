@@ -15,6 +15,7 @@ void STUB_INC_DD1BEC();
 void STUB_INC_DD1A40();
 void STUB_INC_DD1BFC();
 void CAVE_SHORE();
+void CAVE_VF_MASK_OUT();
 void STUB_TREES();
 void CAVE_SHRUB();
 void CAVE_DECAL_SPIRAL();
@@ -113,6 +114,7 @@ const Symbol kSymbols[] = {
     VAR(g_ovlStep005),
     VAR(g_riverStepU),
     VAR(g_riverStepV),
+    SYM(CAVE_VF_MASK_OUT),
     SYM(CAVE_SHORE),
     SYM(STUB_TREES),
     SYM(CAVE_SHRUB),

@@ -51,8 +51,8 @@ inline constexpr uint8_t kINT_VF_BW_N2_original[] = {0xFF, 0x05, 0xEC, 0x1B, 0xD
 inline constexpr Token kINT_VF_BW_N2_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_INC_DD1BEC"}, {TokenType::Byte, 0x90, nullptr}};
 inline constexpr uint8_t kINT_VF_MASK_IN_original[] = {0xFF, 0x05, 0x40, 0x1A, 0xDD, 0x00};
 inline constexpr Token kINT_VF_MASK_IN_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_INC_DD1A40"}, {TokenType::Byte, 0x90, nullptr}};
-inline constexpr uint8_t kINT_VF_MASK_OUT_original[] = {0xFF, 0x05, 0x40, 0x1A, 0xDD, 0x00};
-inline constexpr Token kINT_VF_MASK_OUT_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_INC_DD1A40"}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kINT_VF_MASK_OUT_original[] = {0x39, 0x05, 0x40, 0x1A, 0xDD, 0x00, 0x7D, 0x2C, 0xF3, 0x0F, 0x2A, 0x05, 0x40, 0x1A, 0xDD, 0x00, 0xFF, 0x05, 0x40, 0x1A, 0xDD, 0x00};
+inline constexpr Token kINT_VF_MASK_OUT_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_VF_MASK_OUT"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
 inline constexpr uint8_t kINT_VF_MONO_1_original[] = {0xFF, 0x05, 0xFC, 0x1B, 0xDD, 0x00};
 inline constexpr Token kINT_VF_MONO_1_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_INC_DD1BFC"}, {TokenType::Byte, 0x90, nullptr}};
 inline constexpr uint8_t kINT_VF_MONO_2_original[] = {0xFF, 0x05, 0xFC, 0x1B, 0xDD, 0x00};
@@ -266,7 +266,7 @@ inline constexpr Site kSites[] = {
     {"INT_VF_BW_N1", Phase::Phase2a, Kind::CallGate, 0x4FBC7C, 6, kINT_VF_BW_N1_original, kINT_VF_BW_N1_replacement, 3},
     {"INT_VF_BW_N2", Phase::Phase2a, Kind::CallGate, 0x4FBCC0, 6, kINT_VF_BW_N2_original, kINT_VF_BW_N2_replacement, 3},
     {"INT_VF_MASK_IN", Phase::Phase2a, Kind::CallGate, 0x4F5C3A, 6, kINT_VF_MASK_IN_original, kINT_VF_MASK_IN_replacement, 3},
-    {"INT_VF_MASK_OUT", Phase::Phase2a, Kind::CallGate, 0x4F5C8D, 6, kINT_VF_MASK_OUT_original, kINT_VF_MASK_OUT_replacement, 3},
+    {"INT_VF_MASK_OUT", Phase::Phase2a, Kind::JmpDetour, 0x4F5C7D, 22, kINT_VF_MASK_OUT_original, kINT_VF_MASK_OUT_replacement, 19},
     {"INT_VF_MONO_1", Phase::Phase2a, Kind::CallGate, 0x4FCBAC, 6, kINT_VF_MONO_1_original, kINT_VF_MONO_1_replacement, 3},
     {"INT_VF_MONO_2", Phase::Phase2a, Kind::CallGate, 0x4FCBF0, 6, kINT_VF_MONO_2_original, kINT_VF_MONO_2_replacement, 3},
     {"INT_OVL_FRAME", Phase::Phase2a, Kind::OperandRedirect, 0x4F9904, 8, kINT_OVL_FRAME_original, kINT_OVL_FRAME_replacement, 5},

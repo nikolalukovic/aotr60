@@ -93,7 +93,22 @@ extern "C" bool __fastcall C5_CalcPhysicsXform(uint8_t* drawable, void*, float* 
     }
     uint8_t* loco = LocomotorOf(drawable);
     if (!g_inB) {
+        // The A-render is stock render k: the persistent locomotor springs must step from the stock fraction k/6,
+        // not from a presentation window's half step (wheel/appearance-4 integrators read the fraction through
+        // getInterpolatedPosition 0x676711).
+        uint8_t* ge = Ptr(kTheGameEngine);
+        bool window = g_pwActive != 0;
+        float presentation = 0.0f;
+        if (window) {
+            presentation = Field<float>(ge, 0x3C);
+            SetField<float>(ge, 0x3C, g_fracSaved);
+            g_pwActive = 0;
+        }
         bool r = orig(drawable, out);
+        if (window) {
+            SetField<float>(ge, 0x3C, presentation);
+            g_pwActive = 1;
+        }
         if (r && loco) {
             Store(loco, drawable, Field<uint32_t>(loco, 0xAC), out);
         }

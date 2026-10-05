@@ -171,6 +171,8 @@ DEFTARGET 6603BA
 DEFTARGET 6A5437
 DEFTARGET 69DF29
 DEFTARGET 69DF16
+DEFTARGET 4F5C93
+DEFTARGET 4F5CB1
 
 k_f0_5 DD 3F000000h                     ; 0.5f
 
@@ -547,6 +549,42 @@ ENDM
 INCSTUB STUB_INC_DD1BEC, IDX_INT_VF_BW_S1,   0DD1BECh
 INCSTUB STUB_INC_DD1A40, IDX_INT_VF_MASK_IN, 0DD1A40h
 INCSTUB STUB_INC_DD1BFC, IDX_INT_VF_MONO_1,  0DD1BFCh
+
+; 0x4F5C7D mask view-filter fade-out: 'cmp [0xDD1A40],eax / jge 0x4F5CB1 / cvtsi2ss xmm0,[0xDD1A40] /
+; inc [0xDD1A40]'. The compare and conversion precede the increment here, so a B-render converts the counter value
+; this pair's A-render showed (counter-1) and never takes the end-of-fade path. EAX (fade length) is live.
+CAVE_VF_MASK_OUT PROC
+    cmp byte ptr [g_skipB], 0
+    je stock
+    IS_MAIN_KEEP_EAX
+    jne stock
+    SKIPCNT IDX_INT_VF_MASK_OUT
+    push ecx
+    mov ecx, ds:[0DD1A40h]
+    test ecx, ecx
+    jle bstock                          ; A did not advance the fade
+    dec ecx                             ; the value A showed
+    cmp ecx, eax
+    jge bstock
+    cvtsi2ss xmm0, ecx
+    pop ecx
+    jmp dword ptr [T_4F5C93]
+bstock:
+    pop ecx
+    cmp dword ptr ds:[0DD1A40h], eax
+    jge fadeEnd
+    cvtsi2ss xmm0, dword ptr ds:[0DD1A40h]
+    jmp dword ptr [T_4F5C93]
+stock:
+    RUNCNT IDX_INT_VF_MASK_OUT
+    cmp dword ptr ds:[0DD1A40h], eax
+    jge fadeEnd
+    cvtsi2ss xmm0, dword ptr ds:[0DD1A40h]
+    inc dword ptr ds:[0DD1A40h]
+    jmp dword ptr [T_4F5C93]
+fadeEnd:
+    jmp dword ptr [T_4F5CB1]
+CAVE_VF_MASK_OUT ENDP
 
 ; 0x4FDB4A 'add dword ptr [esi+0x74],0x21 / jmp 0x4FDB58' (shore wave timer).
 CAVE_SHORE PROC

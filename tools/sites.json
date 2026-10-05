@@ -368,21 +368,24 @@
    "id": "INT_VF_MASK_OUT",
    "phase": "2a",
    "group": "render-internal integrators part 1",
-   "address": "0x4F5C8D",
-   "length": 6,
-   "original_hex": "ff 05 40 1a dd 00",
+   "address": "0x4F5C7D",
+   "length": 22,
+   "original_hex": "39 05 40 1a dd 00 7d 2c f3 0f 2a 05 40 1a dd 00 ff 05 40 1a dd 00",
    "original_asm": [
+    "0x4F5C7D: 39 05 40 1a dd 00  cmp dword ptr [0xdd1a40], eax",
+    "0x4F5C83: 7d 2c  jge 0x4f5cb1",
+    "0x4F5C85: f3 0f 2a 05 40 1a dd 00  cvtsi2ss xmm0, dword ptr [0xdd1a40]",
     "0x4F5C8D: ff 05 40 1a dd 00  inc dword ptr [0xdd1a40]"
    ],
-   "kind": "call_gate",
-   "replacement_hex": "e8 <rel32:STUB_INC_DD1A40> 90",
-   "stub": "STUB_INC_DD1A40 (see INT_VF_MASK_IN). Must not touch XMM0, which holds cvtsi2ss([0xDD1A40]) computed at 0x4F5C85 before the span. Returns to 0x4F5C93.",
-   "resume_address": "0x4F5C93",
-   "live_after": "EAX (cvtsi2ss xmm1,eax at 0x4F5C93); XMM0 (old counter as float, divss at 0x4F5C97); ESI=0; EFLAGS dead (no flag consumer on the path 0x4F5C93..jmp 0x4F5C60..ret); x87 depth 0.",
-   "branch_into_span_check": "No listing, pointer or brute rel hits in (0x4F5C8D,0x4F5C93). Identical in delayfix and game820.",
-   "purpose": "Mask view-filter fade-out counter 0xDD1A40 (the INC follows the cvtsi2ss here), A-only.",
-   "evidence": "G2_drawpath.md 125, 131; CRITIC.md 106.",
-   "risks": "Unlike the other INC sites, the next instruction is not a cmp, so the stub must preserve XMM0 and EAX. It does: no SSE use, and push/pop around the thread check. EFLAGS are dead here. No exact 4b form.",
+   "kind": "jmp_detour",
+   "replacement_hex": "e9 <rel32:CAVE_VF_MASK_OUT> 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90",
+   "stub": "CAVE_VF_MASK_OUT (mask view-filter fade-out, 0x4F5C29). Here the end-of-fade compare and the conversion come BEFORE the increment, so skipping only the INC on a B-render would show the next step and could run the end-of-fade transition (0x4F5CB1: view filter off, counters zeroed) on the B-render, before logic step k. 30 / A: the four original instructions (jge re-encoded to 0x4F5CB1), then 0x4F5C93. B (g_skipB, main thread) with 0 < [0xDD1A40] and [0xDD1A40]-1 < EAX: xmm0 = (float)([0xDD1A40]-1), the value this pair's A-render showed; no INC, no end-of-fade; resume 0x4F5C93. Any other B case: compare and convert without the INC.",
+   "resume_address": "0x4F5C93 (all paths that show a fade value) or 0x4F5CB1 (end of fade, never on a B-render after A advanced)",
+   "live_after": "EAX (fade length F; cvtsi2ss xmm1,eax at 0x4F5C93) preserved; XMM0 = counter as float (divss at 0x4F5C97); ESI=0 (0x4F5CC4/0x4F5CD3/0x4F5CDA); ECX dead (0x4F5CB4 reloads it), preserved anyway; EFLAGS dead at both exits; x87 depth 0.",
+   "branch_into_span_check": "No refs to 0x4F5C83/0x4F5C85/0x4F5C8D; the only nearby branch (0x4F5C76 jge 0x4F5C60) targets outside the span (verify_sites.py).",
+   "purpose": "Mask view-filter fade-out counter 0xDD1A40: A-only step, B redraws A's value and never ends the fade.",
+   "evidence": "G2_drawpath.md 125, 131; CRITIC.md 106; code review 2026-10-05 (finding: B showed the next step and could run the end-of-fade).",
+   "risks": "No exact 4b form.",
    "dll_vars": [
     {
      "name": "g_skipB",
@@ -1259,7 +1262,7 @@
    "branch_into_span_check": "- listing.asm operand scan for 0x67BDC1..0x67BDC4: none.\n- Raw rel8/rel32/jcc32 scan of all sections: none.\n- Absolute-dword scan: none. There is also no absolute pointer to 0x67BDC0 anywhere in the image.\n- The only rel32 caller of 0x67BDC0 is 0x67BF39.\n- Bytes identical in all three builds.\n- PASS.",
    "purpose": "C5 client-physics replay. calcPhysicsXform returns 0 whenever loco+0xAC == m_frame, so without this site B-renders would draw units with no pitch, roll or bob (flicker). The A-render runs stock and caches its 16-byte output. The B-render replays it once, mirroring stock render k's call pattern, and never steps the integrators.",
    "evidence": "- SYNTHESIS C5 (176-181); agents/drawable.md 130-144; PLAN 1.5.\n- Signature (verified): thiscall(Drawable*, PhysicsXformInfo*), ret 4, returns AL = [ebp-1].\n- Once-per-frame gate at 0x67BE04/0x67BE0A, with GC vt7c = 0x9F9F1A 'mov eax,[ecx+0x10]'. Stamp write at 0x67BE17 through 0x68B31D, which returns the same loco pointer.\n- Dispatch on [[loco+4]+0x74]: 1,8 -> 0x677026; 2,3 -> 0x670B11; 4 -> 0x67B7AA; 5 -> 0x670E09; 9 -> 0x6732DC. Any other value returns 0 after stamping.\n- Integrator stores into out seen only at +0, +4 and +0xC. The caller reads +0 at 0x67BF49, +4 at 0x67BFF4, +8 at 0x67C0B4/0x67C148, and +0xC at 0x67BF5D/0x67BF6F/0x67BFAD.\n- Call chain: Drawable::draw 0x67C482 (callers 0x485331 in W3DView drawable callback 0x48527B, and 0x4C77F4 in the attached-drawable draw 0x4C72BE) -> 0x67C1FB -> applyPhysicsXform 0x67BE90 (call at 0x67C478) -> 0x67BF39.",
-   "risks": "- PLAN's key {loco, m_frame} alone is wrong while paused. m_frame is frozen, so a stale entry would replay on B while stock (A) applies nothing, causing flicker. The renderIdA==g_renderId-1 rule fixes this.\n- Replay-once per render (replayId) mirrors stock, where only the first call per m_frame returns 1, e.g. a drawable drawn both directly and as an attachment.\n- Calling orig on B could stamp loco+0xAC (a field of a logic-side Locomotor) and double-step the springs, so B never calls it.\n- Load-screen thread: passthrough.\n- Hash drops: visual only, counted in telemetry.",
+   "risks": "- PLAN's key {loco, m_frame} alone is wrong while paused. m_frame is frozen, so a stale entry would replay on B while stock (A) applies nothing, causing flicker. The renderIdA==g_renderId-1 rule fixes this.\n- Replay-once per render (replayId) mirrors stock, where only the first call per m_frame returns 1, e.g. a drawable drawn both directly and as an attachment.\n- Calling orig on B could stamp loco+0xAC (a field of a logic-side Locomotor) and double-step the springs, so B never calls it.\n- Load-screen thread: passthrough.\n- Hash drops: visual only, counted in telemetry. A-render: when a presentation window is open (phase 2b), the wrapper runs the original with the stock fraction GE+0x3C and the stock C4 key, so the persistent DrawableLocoInfo springs step exactly as stock render k (wheel/appearance-4 integrators read the fraction via 0x676711) - code review 2026-10-05.",
    "dll_vars": [
     {
      "name": "g_m60",
@@ -1858,7 +1861,7 @@
    "branch_into_span_check": "listing.asm: no target in 0x48C702..0x48C705. The span start 0x48C701 is targeted by 0x48C6DE, 0x48C6EB and 0x48C6F5 (all to the start, allowed) and by CAVE_S1's B path. Raw rel8/rel32 scan of all executable sections: none. Abs32 scan: none. Bytes are identical in all 4 builds.",
    "purpose": "Start of the W3DView drawable pass. On A-renders it records M_k (camera after the stock step, = stock render k's camera) for the B swap (2a) and the A interpolation (3). It also opens the drawable-pass presentation window (fraction + C4 key, 2b). B and 30 mode run the stock instruction.",
    "evidence": "gdis 0x48C6B0..0x48C773; Set_Transform 0x533550 copies exactly cam+0x18..+0x47 (0x53B260); Set_View_Plane 0x533590 writes +0xD8..+0xE8; Set_Clip_Planes 0x5337C0 writes +0xEC/+0xF0; Update_Frustum 0x533B70 rebuilds when byte[+0xFC]==0; shake block 0x48C0E3..0x48C16E ([ebx+0x74]>0.01 [0xBE5600], offsets [ebx+0x64]/[ebx+0x68], decay x0.75 [0xBDC628]); CameraShaker query 0x4655DD (ecx=[0xDC78D4], AL).",
-   "risks": "The window is opened before the sync gate at 0x48C70C, so it must be closed at 0x48C765, which every path reaches. Fraction readers inside the pass: 0x6765B9/0x67171D/0x676711/0x67679B (C4 group), 0x4B686D (0x4B6C21) and 0x4B6F12 (0x4B6F86) from doDrawModule 0x4C72BE. 0x4B6F12 shifts its history when the fraction is exactly 1.0. That stays once per tick because (2k-1)/12 <= 11/12 for k<=6 and B6 has the stock 1.0.",
+   "risks": "The window is opened before the sync gate at 0x48C70C, so it must be closed at 0x48C765, which every path reaches. Fraction readers inside the pass: 0x6765B9/0x67171D/0x676711/0x67679B (C4 group), 0x4B686D (0x4B6C21) and 0x4B6F12 (0x4B6F86) from doDrawModule 0x4C72BE. 0x4B6F12 shifts its history when the fraction is exactly 1.0. That stays once per tick because (2k-1)/12 <= 11/12 for k<=6 and B6 has the stock 1.0. 0x676711 is also reached from 0x677026 (appearance 1/8) and 0x67B7AA (appearance 4) inside calcPhysicsXform, which steps persistent loco springs; C5 runs that call at the stock fraction.",
    "dll_vars": [
     {
      "name": "g_camRec[2]",

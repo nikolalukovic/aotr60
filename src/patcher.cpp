@@ -103,20 +103,37 @@ bool PatchSet::Verify(std::string* error) const
 
 bool PatchSet::Apply(std::string* error) const
 {
-    for (const Patch& p : patches_) {
+    // Phase 1: make every span writable. Nothing is written unless all of them are.
+    std::vector<DWORD> oldProtect(patches_.size(), 0);
+    for (size_t i = 0; i < patches_.size(); ++i) {
+        const Patch& p = patches_[i];
         void* code = reinterpret_cast<void*>(static_cast<uintptr_t>(p.address));
-        DWORD oldProtect;
-        if (!VirtualProtect(code, p.replacement.size(), PAGE_EXECUTE_READWRITE, &oldProtect)) {
+        if (!VirtualProtect(code, p.replacement.size(), PAGE_EXECUTE_READWRITE, &oldProtect[i])) {
             if (error) {
                 char buf[128];
                 std::snprintf(buf, sizeof(buf), "%s @%08X: VirtualProtect failed (%lu)\n", p.id, p.address,
                               GetLastError());
                 *error += buf;
             }
+            // Restore in reverse order so shared pages end with their original protection.
+            for (size_t j = i; j-- > 0;) {
+                DWORD unused;
+                VirtualProtect(reinterpret_cast<void*>(static_cast<uintptr_t>(patches_[j].address)),
+                               patches_[j].replacement.size(), oldProtect[j], &unused);
+            }
             return false;
         }
-        std::memcpy(code, p.replacement.data(), p.replacement.size());
-        VirtualProtect(code, p.replacement.size(), oldProtect, &oldProtect);
+    }
+    // Phase 2: write everything, then restore the protections (reverse order) and flush.
+    for (const Patch& p : patches_) {
+        std::memcpy(reinterpret_cast<void*>(static_cast<uintptr_t>(p.address)), p.replacement.data(),
+                    p.replacement.size());
+    }
+    for (size_t j = patches_.size(); j-- > 0;) {
+        const Patch& p = patches_[j];
+        void* code = reinterpret_cast<void*>(static_cast<uintptr_t>(p.address));
+        DWORD unused;
+        VirtualProtect(code, p.replacement.size(), oldProtect[j], &unused);
         FlushInstructionCache(GetCurrentProcess(), code, p.replacement.size());
     }
     return true;

@@ -167,7 +167,7 @@ extern C5Stats g_c5Stats;
 
 // frame_ctl.cpp
 struct Config;
-void FrameControlInit(const Config& cfg);
+void FrameControlInit(const Config& cfg, bool installed);
 
 // pacer.cpp
 void PacerInit(const Config& cfg);
@@ -176,8 +176,9 @@ void PacerOnModeChange(bool on);
 
 // telemetry.cpp
 void TelemetryInit(const Config& cfg);
-void TelemetryOnPreRender();
+void TelemetryOnPreRender(int stepperS);
 void TelemetryOnModeChange(bool on, const char* reason);
+void TelemetryOnReset();
 
 // Same test as the stubs: TEB.ClientId.UniqueThread == main thread id.
 inline bool OnMainThread()

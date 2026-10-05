@@ -37,12 +37,17 @@ struct Totals {
     uint64_t seedOutside60 = 0;
     uint64_t tickChecks = 0;
     uint64_t tickErrors = 0;
+    uint64_t mFrames = 0;      // m_frame advances, accumulated per render (resets excluded)
+    int64_t syncMs = 0;        // W3D sync accumulator advances, accumulated per render
+    uint64_t clockResets = 0;  // renders where m_frame or the sync clock went backwards (new game, load, exit)
 };
 Totals g_t;
 Totals g_tPrev;
-uint32_t g_prevMFrame = 0;
-int32_t g_prevSync = 0;
+uint32_t g_lastMFrame = 0;
+int32_t g_lastSync = 0;
+bool g_clockValid = false;
 uint32_t g_prevPresents = 0;
+uint32_t g_prevTmFF = 0;
 PacerStats g_prevPacer;
 uint32_t g_prevAnomaly = 0;
 uint32_t g_prevUnknown = 0;
@@ -58,6 +63,7 @@ struct TickWindow {
     bool broken = false;
     bool any60 = false;
     bool any30 = false;
+    bool stalled = false; // a tick attempt failed in this window (pause, frozen logic, stalled network)
     uint32_t renderId = 0;
     uint64_t rendersA = 0;
     uint32_t mFrame = 0;
@@ -103,6 +109,7 @@ void StartTickWindow()
     g_w.broken = false;
     g_w.any60 = false;
     g_w.any30 = false;
+    g_w.stalled = false;
     g_w.renderId = g_renderId;
     g_w.rendersA = g_t.rendersA;
     g_w.mFrame = MFrame();
@@ -115,22 +122,20 @@ void StartTickWindow()
 
 void CloseTickWindow()
 {
-    if (!g_w.valid || g_w.broken || g_w.nextSub != 7 || (g_w.any60 && g_w.any30)) {
-        return;
+    if (!g_w.valid || g_w.broken || g_w.stalled || g_w.nextSub != 7 || (g_w.any60 && g_w.any30)) {
+        return; // reset, mode change, pause/stall or an incomplete sub sequence: no exact invariant
     }
     uint32_t renders = g_renderId - g_w.renderId;
     uint32_t rendersA = static_cast<uint32_t>(g_t.rendersA - g_w.rendersA);
     uint32_t dm = MFrame() - g_w.mFrame;
-    if (dm != 6) {
-        return; // paused, frozen or stalled tick: no exact invariant
-    }
     bool sixty = g_w.any60;
     ++g_t.tickChecks;
     uint32_t expectRenders = sixty ? 12 : 6;
-    if (renders != expectRenders || rendersA != 6) {
+    if (dm != 6 || renders != expectRenders || rendersA != 6) {
         ++g_t.tickErrors;
         if (g_t.tickErrors <= 20 || g_t.tickErrors % 1000 == 0) {
-            Log("ERROR tick invariant (%s): renders=%u (expected %u) A-renders=%u (expected 6) dm_frame=%u [error #%llu]",
+            Log("ERROR tick invariant (%s): renders=%u (expected %u) A-renders=%u (expected 6) dm_frame=%u (expected 6) "
+                "[error #%llu]",
                 sixty ? "60" : "30", renders, expectRenders, rendersA, dm,
                 static_cast<unsigned long long>(g_t.tickErrors));
         }
@@ -175,6 +180,10 @@ void CheckAnomalies()
             g_vt188LastRet);
         g_prevUnknown = g_unknownPath;
     }
+    if (g_tmFFin60 != g_prevTmFF) {
+        Log("ERROR fast-forward path reached in 60 mode %u times (expected never)", g_tmFFin60);
+        g_prevTmFF = g_tmFFin60;
+    }
     if (g_vt188Calls != g_prevVt188 && g_prevVt188 == 0) {
         Log("info: display vt+0x188 called (first caller 0x%08X)", g_vt188LastRet);
     }
@@ -187,29 +196,27 @@ void Report(int64_t now)
     if (dt <= 0.0) {
         return;
     }
-    uint32_t mFrame = MFrame();
-    int32_t sync = Read<int32_t>(kSyncAccumulator);
     uint32_t presents = g_siteRun[sites::PRESENT];
     double renders = static_cast<double>(g_t.renders - g_tPrev.renders);
     double frac60 = renders > 0 ? static_cast<double>(g_t.renders60 - g_tPrev.renders60) / renders : 0.0;
     char line[512];
     std::snprintf(line, sizeof(line),
-                  "%.1f,%.3f,%.2f,%.2f,%.2f,%u,%u,%.3f,%.3f,%.2f,%.1f,%.2f,%u,%llu,%llu,%llu,%u,%u,%u\r\n",
+                  "%.1f,%.3f,%.2f,%.2f,%.2f,%u,%u,%.3f,%.3f,%.2f,%.1f,%.2f,%u,%llu,%llu,%llu,%u,%u,%u,%llu\r\n",
                   static_cast<double>(now - g_start) / g_freq, frac60, renders / dt,
                   static_cast<double>(g_t.rendersA - g_tPrev.rendersA) / dt, (presents - g_prevPresents) / dt,
                   g_pacerStats.lateSkips - g_prevPacer.lateSkips, g_pacerStats.forcedSkips - g_prevPacer.forcedSkips,
                   static_cast<double>(g_t.logicTicks - g_tPrev.logicTicks) / dt,
-                  static_cast<double>(g_t.logicCalls - g_tPrev.logicCalls) / dt, (mFrame - g_prevMFrame) / dt,
-                  (sync - g_prevSync) / dt,
+                  static_cast<double>(g_t.logicCalls - g_tPrev.logicCalls) / dt,
+                  static_cast<double>(g_t.mFrames - g_tPrev.mFrames) / dt,
+                  static_cast<double>(g_t.syncMs - g_tPrev.syncMs) / dt,
                   static_cast<double>(g_pacerStats.debtTicks - g_prevPacer.debtTicks) * 1000.0 / g_freq,
                   g_pacerStats.gaps - g_prevPacer.gaps, static_cast<unsigned long long>(g_t.seedOutside - g_tPrev.seedOutside),
                   static_cast<unsigned long long>(g_t.tickChecks - g_tPrev.tickChecks),
                   static_cast<unsigned long long>(g_t.tickErrors - g_tPrev.tickErrors), g_c5Stats.replays,
-                  g_cameraStats.bSwaps, g_cameraStats.aSwaps);
+                  g_cameraStats.bSwaps, g_cameraStats.aSwaps,
+                  static_cast<unsigned long long>(g_t.clockResets - g_tPrev.clockResets));
     CsvLine(line);
     g_tPrev = g_t;
-    g_prevMFrame = mFrame;
-    g_prevSync = sync;
     g_prevPresents = presents;
     g_prevPacer = g_pacerStats;
     g_lastReport = now;
@@ -231,13 +238,35 @@ void TelemetryInit(const Config& cfg)
                                 FILE_ATTRIBUTE_NORMAL, nullptr);
             CsvLine("t_s,frac60,renders_s,a_renders_s,presents_s,late_skips,forced_skips,logic_ticks_s,logic_calls_s,"
                     "mframe_s,sync_ms_s,debt_ms,gaps,seed_outside_logic,tick_checks,tick_errors,c5_replays,"
-                    "cam_b_swaps,cam_a_swaps\r\n");
+                    "cam_b_swaps,cam_a_swaps,clock_resets\r\n");
         }
     }
 }
 
-void TelemetryOnPreRender()
+void TelemetryOnPreRender(int stepperS)
 {
+    // A failed tick attempt (pause, frozen logic) leaves the stepper at s > 6.
+    if (stepperS > 6) {
+        g_w.stalled = true;
+    }
+    // Clocks accumulated per render so game resets do not corrupt the rates.
+    uint32_t mf = MFrame();
+    int32_t sync = Read<int32_t>(kSyncAccumulator);
+    if (g_clockValid) {
+        int64_t dmf = static_cast<int64_t>(mf) - g_lastMFrame;
+        int64_t dsync = static_cast<int64_t>(sync) - g_lastSync;
+        if (dmf >= 0 && dmf <= 64 && dsync >= 0) {
+            g_t.mFrames += static_cast<uint64_t>(dmf);
+            g_t.syncMs += dsync;
+        }
+        else {
+            ++g_t.clockResets;
+        }
+    }
+    g_lastMFrame = mf;
+    g_lastSync = sync;
+    g_clockValid = true;
+
     ++g_t.renders;
     if (g_uiTick) {
         ++g_t.rendersA;
@@ -255,8 +284,9 @@ void TelemetryOnPreRender()
     int64_t now = Now();
     if (g_start == 0) {
         g_start = g_lastReport = g_lastSummary = now;
-        g_prevMFrame = MFrame();
-        g_prevSync = Read<int32_t>(kSyncAccumulator);
+        g_tPrev = g_t;
+        g_prevPresents = g_siteRun[sites::PRESENT];
+        g_prevPacer = g_pacerStats;
         return;
     }
     CheckAnomalies();
@@ -278,6 +308,11 @@ void TelemetryOnPreRender()
 void TelemetryOnModeChange(bool on, const char* reason)
 {
     Log("mode: %s (%s) at render %u, m_frame %u", on ? "60 FPS on" : "60 FPS off", reason, g_renderId, MFrame());
+    g_w.broken = true;
+}
+
+void TelemetryOnReset()
+{
     g_w.broken = true;
 }
 

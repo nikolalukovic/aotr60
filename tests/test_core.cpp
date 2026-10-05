@@ -47,9 +47,18 @@ TEST(config_parses_values_comments_and_case)
                              &warnings);
     CHECK(!cfg.enabled);
     CHECK(cfg.pacing == Pacing::Nominal);
-    CHECK_EQ(cfg.telemetry, 2);
+    CHECK_EQ(cfg.telemetry, 1); // 2 is not implemented yet and maps to 1
     CHECK(cfg.fallback);
     CHECK(cfg.allowLivingWorldMap);
+    CHECK(warnings.find("Telemetry=2") != std::string::npos);
+}
+
+TEST(config_parses_interpolation_switches)
+{
+    std::string warnings;
+    Config cfg = ParseConfig("UnitInterpolation = 1\nCameraInterpolation = on\n", &warnings);
+    CHECK(cfg.unitInterpolation);
+    CHECK(cfg.cameraInterpolation);
     CHECK(warnings.empty());
 }
 

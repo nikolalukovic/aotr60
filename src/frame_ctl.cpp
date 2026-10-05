@@ -13,6 +13,7 @@ using namespace game;
 namespace {
 
 Config g_cfg;
+bool g_installed = false; // every patch site was written (DllMain)
 bool g_enabled = false; // Enabled from aotr60.ini; Ctrl+Shift+F11 toggles it while the game runs
 bool g_hotkeyDown = false;
 FrameState g_fs;
@@ -40,9 +41,49 @@ bool LodNeutral()
     return g_lodNeutral && Field<uint32_t>(m, 0x1798) == 0 && Field<uint32_t>(m, 0x179C) == 0x3F800000u;
 }
 
+// PLAN §1.7: no 60 mode while Presents are tied to a display refreshing below 59 Hz (vsync on). The engine's own
+// D3DPRESENT_PARAMETERS live at 0xDD2FF8 (hDeviceWindow +0x1C, PresentationInterval +0x34). Applies to windowed
+// mode too (DWM / DXVK FIFO). Cached; re-evaluated about once per second.
+const char* DisplayBlockReason()
+{
+    static DWORD lastCheck = 0;
+    static bool valid = false;
+    static const char* cached = nullptr;
+    DWORD now = GetTickCount();
+    if (valid && now - lastCheck < 1000) {
+        return cached;
+    }
+    valid = true;
+    lastCheck = now;
+    cached = nullptr;
+    uint32_t interval = Read<uint32_t>(0xDD302C);
+    if (interval == 0x80000000u) {
+        return cached; // D3DPRESENT_INTERVAL_IMMEDIATE: no vsync
+    }
+    uint32_t divisor = interval == 2 ? 2 : interval == 4 ? 3 : interval == 8 ? 4 : 1;
+    HWND hwnd = Read<HWND>(0xDD3014);
+    HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
+    MONITORINFOEXW info{};
+    info.cbSize = sizeof(info);
+    DEVMODEW mode{};
+    mode.dmSize = sizeof(mode);
+    if (!monitor || !GetMonitorInfoW(monitor, &info) ||
+        !EnumDisplaySettingsW(info.szDevice, ENUM_CURRENT_SETTINGS, &mode)) {
+        return cached;
+    }
+    uint32_t hz = mode.dmDisplayFrequency;
+    if (hz > 1 && hz / divisor < 59) {
+        cached = "display refresh below 59 Hz with vsync";
+    }
+    return cached;
+}
+
 // Conditions for staying in 60 mode (PLAN §1.8). Returns nullptr when allowed, else the reason.
 const char* BlockReason()
 {
+    if (!g_installed) {
+        return "patches not installed";
+    }
     if (!g_enabled) {
         return "switched off (aotr60.ini Enabled=0 or Ctrl+Shift+F11)";
     }
@@ -99,6 +140,9 @@ const char* BlockReason()
     if (!LodNeutral()) {
         return "dynamic LOD not neutral";
     }
+    if (const char* display = DisplayBlockReason()) {
+        return display;
+    }
     return nullptr;
 }
 
@@ -111,7 +155,8 @@ const char* StartBlockReason()
     if (Field<uint32_t>(gc, 0x10) < 8) {
         return "first frames of a game";
     }
-    if (Field<uint8_t>(gl, 0x9C) || Field<uint32_t>(gl, 0xA8)) {
+    // Both are bools; GL+0xA9..0xAB is uninitialised padding.
+    if (Field<uint8_t>(gl, 0x9C) || Field<uint8_t>(gl, 0xA8)) {
         return "fade-in";
     }
     if (Field<int32_t>(tv, 0x23D4) > 1) {
@@ -164,30 +209,51 @@ void LeaveSixty(const char* reason)
     TelemetryOnModeChange(false, reason);
 }
 
-// Ctrl+Shift+F11 in the game window toggles 60 FPS (applied by the mode controller at the next pair boundary).
-void PollHotkey()
+bool HotkeyPressed(int key, bool& wasDown)
 {
-    bool down = (GetAsyncKeyState(VK_F11) & 0x8000) && (GetAsyncKeyState(VK_CONTROL) & 0x8000) &&
+    bool down = (GetAsyncKeyState(key) & 0x8000) && (GetAsyncKeyState(VK_CONTROL) & 0x8000) &&
                 (GetAsyncKeyState(VK_SHIFT) & 0x8000);
-    if (down && !g_hotkeyDown) {
-        DWORD pid = 0;
-        GetWindowThreadProcessId(GetForegroundWindow(), &pid);
-        if (pid == GetCurrentProcessId()) {
-            g_enabled = !g_enabled;
-            Log("hotkey: 60 FPS %s", g_enabled ? "switched on" : "switched off");
-        }
+    bool pressed = down && !wasDown;
+    wasDown = down;
+    if (!pressed) {
+        return false;
     }
-    g_hotkeyDown = down;
+    DWORD pid = 0;
+    GetWindowThreadProcessId(GetForegroundWindow(), &pid);
+    return pid == GetCurrentProcessId();
+}
+
+// Test hotkeys in the game window, polled at C0 (between renders, so no presentation window is open):
+//   Ctrl+Shift+F11  60 FPS on/off (the mode controller applies it at the next pair boundary)
+//   Ctrl+Shift+F10  unit + camera interpolation on/off
+void PollHotkeys()
+{
+    if (HotkeyPressed(VK_F11, g_hotkeyDown)) {
+        g_enabled = !g_enabled;
+        Log("hotkey: 60 FPS %s", g_enabled ? "switched on" : "switched off");
+    }
+    static bool interpDown = false;
+    if (HotkeyPressed(VK_F10, interpDown)) {
+        bool on = !g_featPresent;
+        g_featPresent = on ? 1 : 0;
+        g_featCamInterp = on ? 1 : 0;
+        Log("hotkey: unit and camera interpolation %s", on ? "switched on" : "switched off");
+    }
 }
 
 } // namespace
 
-void FrameControlInit(const Config& cfg)
+void FrameControlInit(const Config& cfg, bool installed)
 {
     g_cfg = cfg;
+    g_installed = installed;
     g_enabled = cfg.enabled;
     g_featPresent = cfg.unitInterpolation ? 1 : 0;
-    g_featCamInterp = cfg.cameraInterpolation ? 1 : 0;
+    // The interpolated camera only matches units drawn at the same half step (PLAN §1.2).
+    g_featCamInterp = (cfg.cameraInterpolation && cfg.unitInterpolation) ? 1 : 0;
+    if (cfg.cameraInterpolation && !cfg.unitInterpolation) {
+        Log("config: CameraInterpolation ignored without UnitInterpolation");
+    }
 }
 
 extern "C" void __cdecl OnPreRender(uint8_t* engine)
@@ -202,7 +268,7 @@ extern "C" void __cdecl OnPreRender(uint8_t* engine)
         return;
     }
     CloseWindowsSafetyNet("C0");
-    PollHotkey();
+    PollHotkeys();
 
     const char* block = BlockReason();
     const char* startBlock = block ? block : StartBlockReason();
@@ -244,7 +310,7 @@ extern "C" void __cdecl OnPreRender(uint8_t* engine)
     if (g_skipB) {
         SetIntegratorVariablesForB(true);
     }
-    TelemetryOnPreRender();
+    TelemetryOnPreRender(s);
 }
 
 extern "C" void __cdecl OnPostRender()
@@ -279,4 +345,5 @@ extern "C" void __cdecl OnEngineReset()
         C5Reset();
     }
     g_lodChecked = nullptr; // GameLOD may be re-read for the next game
+    TelemetryOnReset();
 }

@@ -14,7 +14,7 @@ const char kDefaultConfigText[] =
     "; nominal = perfectly even 1000/60 ms frames; the game runs 1 % slower than stock.\n"
     "Pacing = stock\n"
     "\n"
-    "; 0 = off, 1 = speed/invariant checks in aotr60.log, 2 = determinism traces (slow; for testing only).\n"
+    "; 0 = off, 1 = speed/invariant checks in aotr60.log and aotr60_rates.csv (testing).\n"
     "Telemetry = 0\n"
     "\n"
     "; 1 = fall back to 30 FPS automatically when the PC cannot hold 60.\n"
@@ -127,8 +127,14 @@ Config ParseConfig(std::string_view text, std::string* warnings)
             }
         }
         else if (EqualsNoCase(key, "Telemetry")) {
-            if (value == "0" || value == "1" || value == "2") {
+            if (value == "0" || value == "1") {
                 cfg.telemetry = value[0] - '0';
+            }
+            else if (value == "2") {
+                cfg.telemetry = 1; // determinism traces are not implemented yet
+                if (warnings) {
+                    warnings->append("Telemetry=2 (determinism traces) is not implemented yet; using 1\n");
+                }
             }
             else {
                 ok = false;

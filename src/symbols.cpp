@@ -85,6 +85,7 @@ void CAVE_LP_DBL();
 void CAVE_OVL_FADE();
 void STUB_SUBT_STATE();
 void STUB_SUBT_SCROLL();
+void STUB_SUBT_DELETE();
 void CAVE_UIPART();
 void CAVE_WANIM_RISE();
 void STUB_PB_CLOCK_KEEP_B();
@@ -212,6 +213,7 @@ const Symbol kSymbols[] = {
     SYM(CAVE_OVL_FADE),
     SYM(STUB_SUBT_STATE),
     SYM(STUB_SUBT_SCROLL),
+    SYM(STUB_SUBT_DELETE),
     SYM(CAVE_UIPART),
     SYM(CAVE_WANIM_RISE),
     // effects sweep 4a

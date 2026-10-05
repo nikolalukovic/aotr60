@@ -1,7 +1,6 @@
 {
  "game": "AotR rotwk\\game.dat sha256 cc08275d60ff8e3bfd4374c29d61304dea8336e6dd00ab8add88b1df95a705dc",
  "todo": [
-  "display vt+0x190 at 0x44A1FD deletes a finished subtitle object; in 60 mode this can happen on a B-render (display-only, see group_notes part 2 OBSERVATIONS)",
   "client-RNG replay for SMUD heat haze and weather lightning flicker on B (INT_FX_RNG_REPLAY, needs rework: FX render can run more than once per render)"
  ],
  "sites": [
@@ -4218,6 +4217,39 @@
    "purpose": "Subtitle line scroller 0x6603BA becomes A-only, with the text still drawn every render. Per call, the scroll offset +0x44 (pixels; the line y in 0x65F9D8 is floor(i*lineH + y1 - (n-1)*lineH + offset + 0.5)) -= +0x48. At 0 the next queued line is revealed (+0x3C++, string moved into the ring, offset reset to the line height +0x30).",
    "evidence": "G2_drawpath.md G2-D13 (lines 161-167); disassembly 0x6603BA..0x66045A; decompile of 0x65F9D8 (uses +0x44 as a y offset). This answers G2 open question line 361: +0x48 is in pixels per render.",
    "risks": "Phase 4b: no exact form. The offset is clamped to 0 at each reveal and the remainder is discarded. Half-steps (+0x48/2 on A and B) would move each reveal by up to half a frame and change the line period (for example height 20, speed 6: 3.5 instead of 4 frames per line). It stays A-only, so the text scrolls in 30 Hz steps.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ]
+  },
+  {
+   "id": "SUBT_DELETE",
+   "phase": "2a",
+   "group": "render-internal integrators part 2",
+   "address": "0x44A1FD",
+   "length": 6,
+   "original_hex": "ff 90 90 01 00 00",
+   "original_asm": [
+    "0x44A1FD: ff 90 90 01 00 00  call dword ptr [eax+0x190]"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:STUB_SUBT_DELETE> 90",
+   "stub": "STUB_SUBT_DELETE: cmp byte [g_skipB],0 ; je .run ; push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .run ; ret ; .run: jmp [eax+0x190] (EAX = display vtable from 0x44A1F9, ECX = ESI = display; return address 0x44A202 on the stack, the trailing nop resumes at 0x44A203). 0x445FA5 is thiscall with no stack args and a plain ret. 30 / A: stock call. B: skipped.",
+   "resume_address": "0x44A203",
+   "live_after": "EBX (=0, cmp at 0x44A208), ESI (display), EDI (pushed at 0x44A227), EBP; EAX/ECX/EDX dead (0x44A203 is a call to __cdecl 0x6604D9 with no args); EFLAGS dead (cmp at 0x44A208); x87 depth 0.",
+   "branch_into_span_check": "verify_sites.py sweep: no direct branch targets (0x44A1FD,0x44A203).",
+   "purpose": "Display vt+0x190 (0x445FA5) deletes the finished subtitle object at display+0x188 (0x660710, free 0x42F6A0) and clears +0x184/+0x188. A-only, so a B-render mutates nothing and the subtitle ends on the A-render like stock render k.",
+   "evidence": "group_notes part 2 OBSERVATIONS; disassembly 0x44A1F1..0x44A203 and 0x445FA5..0x445FE5.",
+   "risks": "Display-only either way. The subtitle draw 0x6604D9 runs on B as before and its state machine call (INT_SUBT_STATE) is already A-only.",
    "dll_vars": [
     {
      "name": "g_skipB",

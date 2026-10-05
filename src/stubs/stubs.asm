@@ -1200,6 +1200,16 @@ bpath:
     ret
 STUB_SUBT_SCROLL ENDP
 
+; 0x44A1FD 'call [eax+0x190]' (display vt+0x190 0x445FA5: delete the finished subtitle object). EAX = vtable.
+STUB_SUBT_DELETE PROC
+    IF_B_GOTO bpath
+    RUNCNT IDX_SUBT_DELETE
+    jmp dword ptr [eax + 190h]
+bpath:
+    SKIPCNT IDX_SUBT_DELETE
+    ret
+STUB_SUBT_DELETE ENDP
+
 ; 0x6A53FB UI particle integration block (60 bytes). Re-creates the flags of 'test byte [esi+0x10],1' at the end.
 CAVE_UIPART PROC
     IF_B_GOTO bpath

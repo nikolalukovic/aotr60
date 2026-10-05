@@ -21,7 +21,7 @@ struct Config {
     bool uniformScroll = true;       // camera pans at the same screen speed over high and low ground (also at 30)
     bool uniformScrollSlope = true;  // ... and on slopes along the view direction (with UniformScroll)
     bool smoothResourceArea = true;  // resource area circle follows a building being placed (stock: grid steps)
-    bool presentPacing = true;       // without vsync: space the presented frames evenly
+    bool presentPacing = true;       // space the presented frames evenly (half a stock frame apart)
     int splitPresent = 1;            // heavy logic steps: 0 off, 1 on, 2 profile checkpoints, 3 stress (testing)
     bool splitPresentEarly = true;   // start a predicted-heavy Y iteration early (with split present)
     bool repayProportional = true;   // repay owed pacing time faster when more is owed

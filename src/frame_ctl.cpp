@@ -13,6 +13,8 @@ using namespace game;
 namespace {
 
 Config g_cfg;
+bool g_enabled = false; // Enabled from aotr60.ini; Ctrl+Shift+F11 toggles it while the game runs
+bool g_hotkeyDown = false;
 FrameState g_fs;
 const char* g_lastBlock = nullptr; // last reason 60 mode was not allowed (logged on change)
 bool g_lodNeutral = false;
@@ -41,8 +43,8 @@ bool LodNeutral()
 // Conditions for staying in 60 mode (PLAN §1.8). Returns nullptr when allowed, else the reason.
 const char* BlockReason()
 {
-    if (!g_cfg.enabled) {
-        return "disabled in aotr60.ini";
+    if (!g_enabled) {
+        return "switched off (aotr60.ini Enabled=0 or Ctrl+Shift+F11)";
     }
     uint8_t* ge = Ptr(kTheGameEngine);
     uint8_t* gl = Ptr(kTheGameLogic);
@@ -162,11 +164,28 @@ void LeaveSixty(const char* reason)
     TelemetryOnModeChange(false, reason);
 }
 
+// Ctrl+Shift+F11 in the game window toggles 60 FPS (applied by the mode controller at the next pair boundary).
+void PollHotkey()
+{
+    bool down = (GetAsyncKeyState(VK_F11) & 0x8000) && (GetAsyncKeyState(VK_CONTROL) & 0x8000) &&
+                (GetAsyncKeyState(VK_SHIFT) & 0x8000);
+    if (down && !g_hotkeyDown) {
+        DWORD pid = 0;
+        GetWindowThreadProcessId(GetForegroundWindow(), &pid);
+        if (pid == GetCurrentProcessId()) {
+            g_enabled = !g_enabled;
+            Log("hotkey: 60 FPS %s", g_enabled ? "switched on" : "switched off");
+        }
+    }
+    g_hotkeyDown = down;
+}
+
 } // namespace
 
 void FrameControlInit(const Config& cfg)
 {
     g_cfg = cfg;
+    g_enabled = cfg.enabled;
     g_featPresent = cfg.unitInterpolation ? 1 : 0;
     g_featCamInterp = cfg.cameraInterpolation ? 1 : 0;
 }
@@ -183,12 +202,13 @@ extern "C" void __cdecl OnPreRender(uint8_t* engine)
         return;
     }
     CloseWindowsSafetyNet("C0");
+    PollHotkey();
 
     const char* block = BlockReason();
     const char* startBlock = block ? block : StartBlockReason();
     const char* shown = g_fs.m60 ? block : startBlock;
     if (shown != g_lastBlock) {
-        if (shown && g_cfg.enabled) {
+        if (shown && g_enabled) {
             Log("mode: 60 FPS %s: %s", g_fs.m60 ? "stopping" : "not available", shown);
         }
         g_lastBlock = shown;

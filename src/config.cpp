@@ -31,6 +31,10 @@ const char kDefaultConfigText[] =
     "; 1 = include the slope correction (with UniformScroll).\n"
     "UniformScrollSlope = 1\n"
     "\n"
+    "; 1 = the resource area circle moves smoothly with a building being placed (stock: it jumps in 20-unit grid\n"
+    ";     steps; single player). Ctrl+Shift+F7 switches it while playing.\n"
+    "SmoothResourceArea = 1\n"
+    "\n"
     "; Large battles: a long game-logic step would hold the screen; 1 = show the inserted frame in the middle of it.\n"
     "; 0 = off. Ctrl+Shift+F9 switches it while playing.\n"
     "SplitPresent = 1\n"
@@ -139,6 +143,9 @@ Config ParseConfig(std::string_view text, std::string* warnings)
         }
         else if (EqualsNoCase(key, "UniformScrollSlope")) {
             ok = ParseBool(value, cfg.uniformScrollSlope);
+        }
+        else if (EqualsNoCase(key, "SmoothResourceArea")) {
+            ok = ParseBool(value, cfg.smoothResourceArea);
         }
         else if (EqualsNoCase(key, "PresentPacing")) {
             ok = ParseBool(value, cfg.presentPacing);

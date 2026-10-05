@@ -33,6 +33,7 @@ extern volatile float g_presFrac;         // A-render presentation fraction min(
 extern volatile float g_fracSaved;        // stock fraction saved while a window is open
 extern volatile uint8_t g_swapActive;     // W3D camera temporarily swapped
 extern volatile uint8_t g_uniformScroll;  // camera pan speed by height above ground (CAVE_SCROLLNORM)
+extern volatile uint8_t g_claimSmooth;    // resource area of a building being placed not snapped (CAVE_CLAIMSNAP)
 
 // ---- pacing ----
 extern volatile uint32_t g_pacerRanRid;
@@ -178,6 +179,9 @@ void UniformScrollToggle();
 void UniformScrollOnC0();    // keeps the tactical view's scroll cutoff in line with the switch (main thread)
 void UniformScrollOnReset(); // a new map: capture the reference height again
 float UniformScrollFactor(float hag, float hagDesired, float maxHeight, float refHeight); // pure, unit-tested
+void SmoothResourceAreaInit(bool on);
+void SmoothResourceAreaToggle();
+void SmoothResourceAreaOnC0(); // g_claimSmooth = switch on and a single-player battle (main thread)
 
 // Living World strategic map presentation counters (camera.cpp, lw_present.cpp).
 struct LwStats {

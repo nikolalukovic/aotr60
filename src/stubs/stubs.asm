@@ -33,7 +33,7 @@ EXTERN g_lp4b:BYTE, g_uiPart4b:BYTE, g_wanim4b:BYTE
 EXTERN g_featPresent:BYTE, g_radarAFrame:DWORD
 EXTERN g_uiSeqLast:DWORD, g_lwRestoreN:DWORD
 EXTERN g_cpDue:BYTE, g_ppState:DWORD, g_cpFx:BYTE
-EXTERN g_uniformScroll:BYTE
+EXTERN g_uniformScroll:BYTE, g_claimSmooth:BYTE
 EXTERN ScrollZoomFactor:PROC
 
 EXTERN OnPreRender:PROC, OnPostRender:PROC, OnEngineReset:PROC
@@ -168,6 +168,8 @@ DEFTARGET 516C45
 DEFTARGET 517B3A
 DEFTARGET 517AA7
 DEFTARGET 48C962
+DEFTARGET 50C490
+DEFTARGET 50C4DE
 DEFTARGET 645DAD
 DEFTARGET 48B7B6
 DEFTARGET 4FD25A
@@ -1800,6 +1802,35 @@ stock:
     fmul dword ptr ds:[0BD1904h]
     jmp dword ptr [T_48C962]
 CAVE_SCROLLNORM ENDP
+
+; UI_CLAIM_SNAP 0x50C488 'mov eax,[edi+34h]; cmp eax,2000h' in the decal projector 0x50C23A (EDI = decal). Stock
+; snaps a terrain-resource claim decal (type 0x2000) to the resource grid (x - fmod(x, cell), 0x50C492..0x50C4DB), so
+; the resource area of a building being placed jumps from cell to cell. With g_claimSmooth (SmoothResourceArea,
+; single player) the decal of the building being placed (TheInGameUI+0x588 -> claimant -> +0x1C) keeps the
+; building's position. Only EAX and EFLAGS are used; both are dead at 0x50C4DE (sites.json live_after).
+CAVE_CLAIMSNAP PROC
+    cmp byte ptr [g_claimSmooth], 0
+    je stock
+    mov eax, dword ptr ds:[0DE4830h]    ; TheInGameUI
+    test eax, eax
+    jz stock
+    mov eax, dword ptr [eax + 588h]     ; placement claimant holder
+    test eax, eax
+    jz stock
+    mov eax, dword ptr [eax]            ; claimant
+    test eax, eax
+    jz stock
+    cmp edi, dword ptr [eax + 1Ch]      ; this decal is the claimant's
+    jne stock
+    cmp dword ptr [edi + 34h], 2000h
+    jne stock
+    RUNCNT IDX_UI_CLAIM_SNAP
+    jmp dword ptr [T_50C4DE]            ; skip the snap
+stock:
+    mov eax, dword ptr [edi + 34h]
+    cmp eax, 2000h
+    jmp dword ptr [T_50C490]            ; jne 0x50C4DE on the flags of this cmp
+CAVE_CLAIMSNAP ENDP
 
 ; GATE_GC_DISPMODE 0x6488A1 'call 0x645DAD' (pending display-mode change: device reset, shell rebuild): A-only, so
 ; a resolution change applied at 60 FPS never runs inside a B-render.

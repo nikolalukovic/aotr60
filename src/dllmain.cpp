@@ -64,12 +64,12 @@ void Startup()
 
     Config cfg = dataDir.empty() ? Config{} : LoadConfig(dataDir);
     Log("config: Enabled=%d Pacing=%s Telemetry=%d Fallback=%d UnitInterpolation=%d CameraInterpolation=%d "
-        "UniformScroll=%d UniformScrollSlope=%d LivingWorldMap=%d SplitPresent=%d SplitPresentEarly=%d RepayProportional=%d "
-        "SplitPresentNative=%d",
+        "UniformScroll=%d UniformScrollSlope=%d SmoothResourceArea=%d LivingWorldMap=%d SplitPresent=%d "
+        "SplitPresentEarly=%d RepayProportional=%d SplitPresentNative=%d",
         cfg.enabled ? 1 : 0, cfg.pacing == Pacing::Stock ? "stock" : "nominal", cfg.telemetry, cfg.fallback ? 1 : 0,
         cfg.unitInterpolation ? 1 : 0, cfg.cameraInterpolation ? 1 : 0, cfg.uniformScroll ? 1 : 0,
-        cfg.uniformScrollSlope ? 1 : 0, cfg.livingWorldMap ? 1 : 0, cfg.splitPresent, cfg.splitPresentEarly ? 1 : 0, cfg.repayProportional ? 1 : 0,
-        cfg.splitPresentNative ? 1 : 0);
+        cfg.uniformScrollSlope ? 1 : 0, cfg.smoothResourceArea ? 1 : 0, cfg.livingWorldMap ? 1 : 0, cfg.splitPresent,
+        cfg.splitPresentEarly ? 1 : 0, cfg.repayProportional ? 1 : 0, cfg.splitPresentNative ? 1 : 0);
 
     auto base = reinterpret_cast<const uint8_t*>(GetModuleHandleW(nullptr));
     if (reinterpret_cast<uintptr_t>(base) != kGameImageBase) {

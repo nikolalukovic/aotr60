@@ -361,11 +361,16 @@ bool HotkeyPressed(int key, bool& wasDown)
 //   Ctrl+Shift+F10  unit + camera interpolation on/off
 //   Ctrl+Shift+F9   split present (heavy logic steps) on/off
 //   Ctrl+Shift+F8   uniform camera scroll on/off
+//   Ctrl+Shift+F7   smooth resource area (building placement) on/off
 void PollHotkeys()
 {
     if (HotkeyPressed(VK_F11, g_hotkeyDown)) {
         g_enabled = !g_enabled;
         Log("hotkey: 60 FPS %s", g_enabled ? "switched on" : "switched off");
+    }
+    static bool claimDown = false;
+    if (HotkeyPressed(VK_F7, claimDown)) {
+        SmoothResourceAreaToggle();
     }
     static bool scrollDown = false;
     if (HotkeyPressed(VK_F8, scrollDown)) {
@@ -395,6 +400,7 @@ void FrameControlInit(const Config& cfg, bool installed)
     // The interpolated camera only matches units drawn at the same half step (PLAN §1.2).
     g_featCamInterp = (cfg.cameraInterpolation && cfg.unitInterpolation) ? 1 : 0;
     UniformScrollInit(cfg.uniformScroll, cfg.uniformScrollSlope);
+    SmoothResourceAreaInit(cfg.smoothResourceArea);
     if (cfg.cameraInterpolation && !cfg.unitInterpolation) {
         Log("config: CameraInterpolation ignored without UnitInterpolation");
     }
@@ -416,6 +422,7 @@ extern "C" void __cdecl OnPreRender(uint8_t* engine)
     CloseWindowsSafetyNet("C0");
     PollHotkeys();
     UniformScrollOnC0();
+    SmoothResourceAreaOnC0();
 
     const char* block = BlockReason();
     const char* startBlock = block ? block : StartBlockReason();

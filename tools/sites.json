@@ -5548,6 +5548,33 @@
      "ctype": "uint8_t"
     }
    ]
+  },
+  {
+   "id": "UI_CLAIM_SNAP",
+   "phase": "2a",
+   "group": "UI feel (resource area)",
+   "address": "0x50C488",
+   "length": 8,
+   "original_hex": "8b 47 34 3d 00 20 00 00",
+   "original_asm": [
+    "0x50C488: 8b 47 34  mov eax, dword ptr [edi+0x34]   ; decal type",
+    "0x50C48B: 3d 00 20 00 00  cmp eax, 0x2000   ; terrain-resource claim decal"
+   ],
+   "kind": "jmp_detour",
+   "replacement_hex": "e9 <rel32:CAVE_CLAIMSNAP> 90 90 90",
+   "stub": "CAVE_CLAIMSNAP: cmp byte [g_claimSmooth],0 / je stock. On: eax = [0xDE4830] (TheInGameUI), eax = [eax+0x588] (placement claimant holder), eax = [eax] (claimant), each null -> stock; cmp edi,[eax+0x1C] (the claimant's decal) / jne stock; cmp dword [edi+0x34],0x2000 / jne stock; RUNCNT; jmp 0x50C4DE (skip the snap: the decal keeps the building's position). Stock: mov eax,[edi+0x34]; cmp eax,0x2000; jmp 0x50C490 (the jne 0x50C4DE there consumes the flags of this cmp).",
+   "resume_address": "0x50C490",
+   "live_after": "Stock exit 0x50C490: EAX = [edi+0x34], EFLAGS of cmp eax,0x2000 (jne at 0x50C490), as the displaced code. Skip exit 0x50C4DE: the stock not-0x2000 path's state; EAX dead (0x50C4DE mov ecx,[0xDE4690]; EAX is written at 0x50C4FD/0x50C55A before any read), EFLAGS dead (test ecx,ecx at 0x50C4E4). EDI, ESI, EBX, EBP, ESP, x87 (depth 0) and XMM0-7 untouched (XMM5 = 0 on every path into 0x50C488: zeroed at 0x50C24A/0x50C485, only compared in between; read at 0x50C4EE).",
+   "branch_into_span_check": "verify_sites.py sweep: no direct branch targets inside (0x50C488,0x50C490); 0x50C488 itself is the target of je 0x50C3EB.",
+   "purpose": "Smooth resource area (SmoothResourceArea, default on, Ctrl+Shift+F7): the decal projector 0x50C23A snaps every terrain-resource claim decal (type 0x2000) to the resource grid (x - fmod(x, TerrainResourceCellSize), AotR 20 units: 0x50C492..0x50C4DB), so the circle that shows the resource area of a building being placed jumps from cell to cell while the building moves freely. With the switch on (single player) the decal of the building being placed is drawn where the building is. Per-vertex claim colours (0x50D264, the existing claims on the terrain grid), the claim percentage and the placed building's claim are unchanged.",
+   "evidence": "TheInGameUI+0x574 = PlaceTerrainResourceClaimantDecal (field table 0xC12870); handleBuildPlacements 0x6A2AE5 (InGameUI::preDraw 0x6A3B59, every render) creates the claimant (new 4 at 0x6A2C84, ctor 0x8EAE72 -> 0x8EADC7, held at InGameUI+0x588 via 0x69C03D) and its decal (0x8EACFC: projected shadow manager [0xDD1D14] vt+8 with type 0x2000, stored at claimant+0x1C); 0x8EAB82 (via 0x8EADC0 mov ecx,[ecx]) copies the placement drawable's position (0x676711) to decal+8 every preDraw. Snap at 0x50C488..0x50C4DB uses fmod 0xA3D6C8 via 0x492AC8 with [[0xDE412C]+0x170]+0x3C (gamedata.ini TerrainResourceCellSize = 20). The claim itself (0x75B561) uses floor((x - origin)/cell + 0.5), so the stock snap (fmod, toward zero) is already up to one cell off the claimed area. Texture farmreticle02 (Textures1.big) is a plain disc.",
+   "risks": "Changes a stock UI visual (default on at the user's request). The circle is centred on the building instead of a cell corner (at most one cell from the stock position; the claimed cells are unchanged). Off: byte-exact stock path.",
+   "dll_vars": [
+    {
+     "name": "g_claimSmooth",
+     "ctype": "uint8_t"
+    }
+   ]
   }
  ],
  "coverage": [

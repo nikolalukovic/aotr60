@@ -585,6 +585,35 @@ void UniformScrollOnC0()
     }
 }
 
+// ---- Smooth resource area (SmoothResourceArea, Ctrl+Shift+F7) ----
+// The decal projector (0x50C23A) snaps every terrain-resource claim decal to the resource grid (AotR: 20 units), so
+// the circle showing the resource area of a building being placed jumps from cell to cell while the building moves
+// freely. CAVE_CLAIMSNAP skips the snap for that one decal (TheInGameUI+0x588 -> claimant -> +0x1C) while
+// g_claimSmooth is set; the claim itself and the claim colours on the terrain are unchanged.
+namespace {
+bool g_claimSmoothOn = false; // SmoothResourceArea / hotkey
+} // namespace
+
+void SmoothResourceAreaInit(bool on)
+{
+    g_claimSmoothOn = on;
+}
+
+void SmoothResourceAreaToggle()
+{
+    g_claimSmoothOn = !g_claimSmoothOn;
+    Log("hotkey: smooth resource area %s", g_claimSmoothOn ? "on" : "off");
+    SmoothResourceAreaOnC0();
+}
+
+void SmoothResourceAreaOnC0()
+{
+    uint8_t* gl = Ptr(kTheGameLogic);
+    uint32_t mode = gl ? Field<uint32_t>(gl, 0x110) : 0xFFFFFFFFu;
+    bool modeOk = gl && (mode == 0 || mode == 2 || mode == 6) && !Ptr(kTheNetwork); // single-player battle
+    g_claimSmooth = (g_claimSmoothOn && modeOk) ? 1 : 0;
+}
+
 // drawFrame exit (0x44A271): real camera and stock fraction/key back.
 extern "C" void __cdecl SceneRestore()
 {

@@ -122,6 +122,7 @@ void TCL_NET_CAVE();
 void BEGIN_RENDER_NET_CAVE();
 void SHUTDOWN_CAVE();
 void CAVE_SCROLLNORM();
+void CAVE_CLAIMSNAP();
 void Gate_GC_DISPMODE();
 }
 
@@ -275,6 +276,7 @@ const Symbol kSymbols[] = {
     SYM(SHUTDOWN_CAVE),
     // camera feel and safety
     SYM(CAVE_SCROLLNORM),
+    SYM(CAVE_CLAIMSNAP),
     SYM(Gate_GC_DISPMODE),
 };
 

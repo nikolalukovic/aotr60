@@ -54,6 +54,7 @@ The game window's title bar shows the current state (in windowed mode), for exam
 | Ctrl+Shift+F10 | smooth unit/camera interpolation on / off |
 | Ctrl+Shift+F9 | split present (large battles, see below) on / off |
 | Ctrl+Shift+F8 | uniform camera scroll (see below) on / off |
+| Ctrl+Shift+F7 | smooth resource area while placing a building (see below) on / off |
 
 If the PC cannot hold 60 FPS for a sustained period, AotR60 falls back to 30 FPS for 30 s (doubling up to 8 min on
 repeats) and then tries again. Isolated hitches do not trigger this.
@@ -75,6 +76,13 @@ partly corrected. The speed where you first scroll on a map is unchanged. It app
 player scrolling (not scripted cameras) and does not change game logic or speed. `UniformScroll = 0` or
 Ctrl+Shift+F8 restores the stock camera; `UniformScrollSlope = 0` keeps the height part without the slope term.
 
+**Smooth resource area.** While a resource building is being placed, the game shows the area it will take for resources
+as a circle on the ground. Stock snaps that circle to the 20-unit resource grid, so it jumps from cell to cell while the
+building moves freely under the cursor. With `SmoothResourceArea = 1` (default, single player) the circle stays centred
+on the building, so it can sit up to one grid cell away from where the stock circle would be. What the building
+actually claims, the colours of existing claims on the ground and the percentage shown are unchanged.
+`SmoothResourceArea = 0` or Ctrl+Shift+F7 restores the stock circle.
+
 ## Settings
 
 `%APPDATA%\Age of the Ring\aotr60\aotr60.ini` (created on first start; delete it to restore the defaults):
@@ -87,6 +95,7 @@ Ctrl+Shift+F8 restores the stock camera; `UniformScrollSlope = 0` keeps the heig
 | `CameraInterpolation` | 1 | interpolate the camera picture too (needs UnitInterpolation) |
 | `UniformScroll` | 1 | same camera pan speed over high and low ground and on slopes, single player (0 = stock camera) |
 | `UniformScrollSlope` | 1 | the slope part of UniformScroll |
+| `SmoothResourceArea` | 1 | the resource area circle follows a building being placed smoothly, single player (0 = stock grid steps) |
 | `PresentPacing` | 1 | without vsync: space the presented frames evenly |
 | `SplitPresent` | 1 | large battles: show the in-between frame in the middle of a long logic step (0 = off; 2 = profile, 3 = stress: testing only) |
 | `SplitPresentEarly` | 1 | with split present: start the frame before a predicted heavy logic step early |

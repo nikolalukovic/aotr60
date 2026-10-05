@@ -60,6 +60,7 @@ extern int32_t g_lightPulseLtr;
 extern volatile uint8_t g_lp4b;       // phase 4b LightPulse half-steps (session constant)
 extern volatile uint8_t g_uiPart4b;   // phase 4b UI particle half-steps (session constant)
 extern volatile uint8_t g_wanim4b;    // phase 4b world-anim rise half-steps (session constant)
+extern volatile uint32_t g_radarAFrame; // m_frame of the last radar overlay refresh test outside B-renders
 
 // ---- telemetry / anomalies ----
 extern volatile uint32_t g_siteRun[sites::kSiteCount];

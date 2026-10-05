@@ -30,6 +30,7 @@ EXTERN g_siteRun:DWORD, g_siteSkip:DWORD
 EXTERN g_tmFFin60:DWORD, g_anomaly:DWORD, g_unknownPath:DWORD
 EXTERN g_vt188Calls:DWORD, g_vt188LastRet:DWORD, g_palBadRet:DWORD, g_iguiBadRet:DWORD
 EXTERN g_lp4b:BYTE, g_uiPart4b:BYTE, g_wanim4b:BYTE
+EXTERN g_featPresent:BYTE, g_radarAFrame:DWORD
 
 EXTERN OnPreRender:PROC, OnPostRender:PROC, OnEngineReset:PROC
 EXTERN AotR60_Pacer:PROC, AotR60_PresentSkip:PROC
@@ -173,6 +174,18 @@ DEFTARGET 69DF29
 DEFTARGET 69DF16
 DEFTARGET 4F5C93
 DEFTARGET 4F5CB1
+DEFTARGET 97D69E
+DEFTARGET 5EE9AB
+DEFTARGET 450177
+DEFTARGET 450117
+DEFTARGET 4BCE68
+DEFTARGET 4C5CF7
+DEFTARGET 4C5D2D
+DEFTARGET 4B2528
+DEFTARGET 4D0215
+DEFTARGET 4D0265
+DEFTARGET 4B6F8B
+DEFTARGET 4E0A73
 
 k_f0_5 DD 3F000000h                     ; 0.5f
 
@@ -1257,5 +1270,187 @@ stock:
     cvtsi2ss xmm0, dword ptr ds:[0D9F608h]
     jmp dword ptr [T_69DF16]
 CAVE_WANIM_RISE ENDP
+
+; ===============================================================================================================
+; Effects sweep 4a (after the first 60 FPS play test): UI clock, tooltip, radar, animation FX events, attached
+; models, rider/sail slews, laser texture cells, turret history (2a), floor fade, terrain tile rebuild budget.
+; ===============================================================================================================
+
+; UI_PBCLOCK_* 'mov byte [esi],0 / call winSetUserData(esi)' after a push button drew its progress clock.
+; The clock request is armed by ControlBar::update (A-only, after the draw). A B-render keeps it, so both renders
+; of a pair show the clock and the next A-render consumes it exactly like stock render k+1.
+STUB_PB_CLOCK_KEEP_B PROC
+    cmp byte ptr [g_skipB], 0
+    je clear
+    IS_MAIN_KEEP_EAX
+    je keep
+clear:
+    RUNCNT IDX_UI_PBCLOCK_IMAGE
+    mov byte ptr [esi], 0
+    jmp dword ptr [T_97D69E]            ; winSetUserData: ret 4 pops the pushed ESI, returns to site+5
+keep:
+    SKIPCNT IDX_UI_PBCLOCK_IMAGE
+    jmp dword ptr [T_97D69E]
+STUB_PB_CLOCK_KEEP_B ENDP
+
+; UI_TOOLTIP_LINGER 0x5EE9A3 'lea eax,[esi+0x1304] / dec dword [eax]' (tooltip hide grace, per draw).
+CAVE_TOOLTIP_LINGER PROC
+    lea eax, [esi + 1304h]
+    IF_B_GOTO bpath
+    RUNCNT IDX_UI_TOOLTIP_LINGER
+    dec dword ptr [eax]
+    jmp dword ptr [T_5EE9AB]
+bpath:
+    SKIPCNT IDX_UI_TOOLTIP_LINGER
+    jmp dword ptr [T_5EE9AB]
+CAVE_TOOLTIP_LINGER ENDP
+
+; UI_RADAR_REFRESH_B 0x450111 'mov ecx,[0xDE4388]' before the radar overlay's m_frame%6 refresh test: a B-render
+; skips the test when the A-render already ran it for the same m_frame (identical output; performance only).
+CAVE_RADAR_REFRESH PROC
+    mov ecx, ds:[0DE4388h]
+    push eax
+    mov eax, [ecx + 10h]                ; m_frame
+    cmp byte ptr [g_skipB], 0
+    je recordA
+    push edx
+    mov edx, fs:[24h]
+    cmp edx, [g_mainTid]
+    pop edx
+    jne stock
+    cmp eax, [g_radarAFrame]
+    jne stock
+    pop eax
+    SKIPCNT IDX_UI_RADAR_REFRESH_B
+    jmp dword ptr [T_450177]
+recordA:
+    mov [g_radarAFrame], eax
+stock:
+    pop eax
+    jmp dword ptr [T_450117]
+CAVE_RADAR_REFRESH ENDP
+
+; INT_FXEV_GATE 0x4C7819 'call 0x4BCE68' (animation frame events). In 60 mode the events are evaluated once per
+; pair, on the B-render, which sees stock render k's (prev,cur] frame window (INT_FXEV_PREV). A-renders skip.
+STUB_FXEV_GATE PROC
+    cmp byte ptr [g_m60], 0
+    je run
+    cmp byte ptr [g_inB], 0
+    jne run
+    cmp byte ptr [g_inClientUpdate], 0
+    je run
+    IS_MAIN_KEEP_EAX
+    jne run
+    SKIPCNT IDX_INT_FXEV_GATE
+    ret
+run:
+    RUNCNT IDX_INT_FXEV_GATE
+    jmp dword ptr [T_4BCE68]
+STUB_FXEV_GATE ENDP
+
+; INT_FXEV_PREV 0x4BF74A 'mov [esi+4],eax / mov eax,[esi+0xC]' (animation channel prev = cur before the advance).
+; B keeps prev at the frame before the A-render's advance.
+STUB_FXEV_PREV PROC
+    IF_B_GOTO bpath
+    mov [esi + 4], eax
+bpath:
+    mov eax, [esi + 0Ch]
+    ret
+STUB_FXEV_PREV ENDP
+
+; INT_ATTMDL_CHK 0x4C5CF1 'cmp dword [esi+0x1C],0 / jg 0x4C5D2D' (attached model expiry): B never removes.
+CAVE_ATTMDL_CHK PROC
+    IF_B_GOTO alive
+    cmp dword ptr [esi + 1Ch], 0
+    jg alive
+    jmp dword ptr [T_4C5CF7]
+alive:
+    jmp dword ptr [T_4C5D2D]
+CAVE_ATTMDL_CHK ENDP
+
+; INT_ATTMDL_DEC 0x4C5F5B 'dec dword [esi+0x1C] / add esi,0x20' (attached model lifetime per draw): A-only.
+STUB_ATTMDL_DEC PROC
+    IF_B_GOTO bpath
+    RUNCNT IDX_INT_ATTMDL_DEC
+    dec dword ptr [esi + 1Ch]
+    add esi, 20h
+    ret
+bpath:
+    SKIPCNT IDX_INT_ATTMDL_DEC
+    add esi, 20h
+    ret
+STUB_ATTMDL_DEC ENDP
+
+; INT_RIDER_SLEW 0x4B2520 entry of the cdecl heading slew (0.1 rad per call): B returns without stepping.
+CAVE_RIDER_SLEW PROC
+    IF_B_GOTO bpath
+    mov eax, [esp + 4]
+    movss xmm0, dword ptr [eax]
+    jmp dword ptr [T_4B2528]
+bpath:
+    ret
+CAVE_RIDER_SLEW ENDP
+
+; INT_LASER_TEXCELL 0x4C90DD 'inc dword [esi+0x28] / mov ecx,[esi+0x18]' (laser texture cell per draw): A-only.
+STUB_LASER_TEXCELL PROC
+    IF_B_GOTO bpath
+    inc dword ptr [esi + 28h]
+bpath:
+    mov ecx, [esi + 18h]
+    ret
+STUB_LASER_TEXCELL ENDP
+
+; INT_SAIL_SLEW 0x4D020C 'cmp byte [edi+0x2EC],0 / je 0x4D0265' (sail swing per draw): B redraws A's angle.
+CAVE_SAIL_SLEW PROC
+    cmp byte ptr [edi + 2ECh], 0
+    je first
+    IF_B_GOTO bpath
+    jmp dword ptr [T_4D0215]
+bpath:
+    movss xmm0, dword ptr [edi + 2E8h]
+    movss dword ptr [ebp + 8], xmm0
+first:
+    jmp dword ptr [T_4D0265]
+CAVE_SAIL_SLEW ENDP
+
+; INT_TURRET_2A 0x4B6F81 'mov eax,[0xDE4324] / movss xmm1,[eax+0x3C]' (turret history shifts at fraction 1.0).
+; Only without unit interpolation: a B-render whose fraction is 1.0 sees 0.0, so the history shifts once per tick.
+CAVE_TURRET_FRAC PROC
+    mov eax, ds:[0DE4324h]
+    movss xmm1, dword ptr [eax + 3Ch]
+    cmp byte ptr [g_skipB], 0
+    je done
+    cmp byte ptr [g_featPresent], 0
+    jne done
+    IS_MAIN_KEEP_EAX
+    jne done
+    ucomiss xmm1, dword ptr ds:[0BD1908h]
+    jp done
+    jne done
+    xorps xmm1, xmm1
+done:
+    jmp dword ptr [T_4B6F8B]
+CAVE_TURRET_FRAC ENDP
+
+; INT_FLOOR_FADE 0x4E3F08 'addss xmm0,[edx] / comiss xmm1,xmm0' (floor death fade per scene render): A-only.
+; The final comiss sets the flags the following jbe reads; ret keeps them.
+STUB_FLOOR_FADE PROC
+    IF_B_GOTO bpath
+    addss xmm0, dword ptr [edx]
+bpath:
+    comiss xmm1, xmm0
+    ret
+STUB_FLOOR_FADE ENDP
+
+; INT_TERRAIN_TILEUPD vtable slot 0xBE4794 (terrain On_Frame_Update 0x4E0A73: tile texture rebuild budget).
+; B-renders do no tile work; the per-pair budget is the stock per-frame budget.
+STUB_TERRAIN_OFU PROC
+    IF_B_GOTO bpath
+    RUNCNT IDX_INT_TERRAIN_TILEUPD
+    jmp dword ptr [T_4E0A73]
+bpath:
+    SKIPCNT IDX_INT_TERRAIN_TILEUPD
+    ret
+STUB_TERRAIN_OFU ENDP
 
 END

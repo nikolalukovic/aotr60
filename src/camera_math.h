@@ -28,5 +28,6 @@ struct CameraStats {
     uint32_t aShake = 0;
     uint32_t aCuts = 0;
     uint32_t guardEnds = 0;
+    uint32_t aShakerFar = 0; // shaker list non-empty but out of range (formerly blocked interpolation)
 };
 extern CameraStats g_cameraStats;

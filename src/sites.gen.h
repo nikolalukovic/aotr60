@@ -251,6 +251,36 @@ inline constexpr uint8_t kINT_UIPART_original[] = {0xF3, 0x0F, 0x10, 0x46, 0x04,
 inline constexpr Token kINT_UIPART_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_UIPART"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
 inline constexpr uint8_t kINT_WANIM_RISE_original[] = {0xF3, 0x0F, 0x2A, 0x05, 0x08, 0xF6, 0xD9, 0x00};
 inline constexpr Token kINT_WANIM_RISE_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_WANIM_RISE"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kUI_PBCLOCK_IMAGE_original[] = {0xC6, 0x06, 0x00, 0xE8, 0xDF, 0x8C, 0x4D, 0x00};
+inline constexpr Token kUI_PBCLOCK_IMAGE_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_PB_CLOCK_KEEP_B"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kUI_PBCLOCK_PLAIN_original[] = {0xC6, 0x06, 0x00, 0xE8, 0x05, 0x86, 0x4D, 0x00};
+inline constexpr Token kUI_PBCLOCK_PLAIN_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_PB_CLOCK_KEEP_B"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kUI_PBCLOCK_RADIAL_original[] = {0xC6, 0x06, 0x00, 0xE8, 0x02, 0x7F, 0x4D, 0x00};
+inline constexpr Token kUI_PBCLOCK_RADIAL_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_PB_CLOCK_KEEP_B"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kUI_TOOLTIP_LINGER_original[] = {0x8D, 0x86, 0x04, 0x13, 0x00, 0x00, 0xFF, 0x08};
+inline constexpr Token kUI_TOOLTIP_LINGER_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_TOOLTIP_LINGER"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kUI_RADAR_REFRESH_B_original[] = {0x8B, 0x0D, 0x88, 0x43, 0xDE, 0x00};
+inline constexpr Token kUI_RADAR_REFRESH_B_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_RADAR_REFRESH"}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kINT_FXEV_GATE_original[] = {0xE8, 0x4A, 0x56, 0xFF, 0xFF};
+inline constexpr Token kINT_FXEV_GATE_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_FXEV_GATE"}};
+inline constexpr uint8_t kINT_FXEV_PREV_original[] = {0x89, 0x46, 0x04, 0x8B, 0x46, 0x0C};
+inline constexpr Token kINT_FXEV_PREV_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_FXEV_PREV"}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kINT_ATTMDL_CHK_original[] = {0x83, 0x7E, 0x1C, 0x00, 0x7F, 0x36};
+inline constexpr Token kINT_ATTMDL_CHK_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_ATTMDL_CHK"}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kINT_ATTMDL_DEC_original[] = {0xFF, 0x4E, 0x1C, 0x83, 0xC6, 0x20};
+inline constexpr Token kINT_ATTMDL_DEC_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_ATTMDL_DEC"}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kINT_RIDER_SLEW_original[] = {0x8B, 0x44, 0x24, 0x04, 0xF3, 0x0F, 0x10, 0x00};
+inline constexpr Token kINT_RIDER_SLEW_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_RIDER_SLEW"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kINT_LASER_TEXCELL_original[] = {0xFF, 0x46, 0x28, 0x8B, 0x4E, 0x18};
+inline constexpr Token kINT_LASER_TEXCELL_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_LASER_TEXCELL"}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kINT_SAIL_SLEW_original[] = {0x80, 0xBF, 0xEC, 0x02, 0x00, 0x00, 0x00, 0x74, 0x50};
+inline constexpr Token kINT_SAIL_SLEW_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_SAIL_SLEW"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kINT_TURRET_2A_original[] = {0xA1, 0x24, 0x43, 0xDE, 0x00, 0xF3, 0x0F, 0x10, 0x48, 0x3C};
+inline constexpr Token kINT_TURRET_2A_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CAVE_TURRET_FRAC"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kINT_FLOOR_FADE_original[] = {0xF3, 0x0F, 0x58, 0x02, 0x0F, 0x2F, 0xC8};
+inline constexpr Token kINT_FLOOR_FADE_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_FLOOR_FADE"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kINT_TERRAIN_TILEUPD_original[] = {0x73, 0x0A, 0x4E, 0x00};
+inline constexpr Token kINT_TERRAIN_TILEUPD_replacement[] = {{TokenType::Abs32, 0, "STUB_TERRAIN_OFU"}};
 
 inline constexpr Site kSites[] = {
     {"C0_PRERENDER", Phase::Phase2a, Kind::CallGate, 0x6325CF, 6, kC0_PRERENDER_original, kC0_PRERENDER_replacement, 3},
@@ -366,9 +396,24 @@ inline constexpr Site kSites[] = {
     {"INT_SUBT_SCROLL", Phase::Phase2a, Kind::CallGate, 0x660469, 5, kINT_SUBT_SCROLL_original, kINT_SUBT_SCROLL_replacement, 2},
     {"INT_UIPART", Phase::Phase2a, Kind::JmpDetour, 0x6A53FB, 60, kINT_UIPART_original, kINT_UIPART_replacement, 57},
     {"INT_WANIM_RISE", Phase::Phase2a, Kind::JmpDetour, 0x69DF0E, 8, kINT_WANIM_RISE_original, kINT_WANIM_RISE_replacement, 5},
+    {"UI_PBCLOCK_IMAGE", Phase::Phase2a, Kind::CallGate, 0x4A49B7, 8, kUI_PBCLOCK_IMAGE_original, kUI_PBCLOCK_IMAGE_replacement, 5},
+    {"UI_PBCLOCK_PLAIN", Phase::Phase2a, Kind::CallGate, 0x4A5091, 8, kUI_PBCLOCK_PLAIN_original, kUI_PBCLOCK_PLAIN_replacement, 5},
+    {"UI_PBCLOCK_RADIAL", Phase::Phase2a, Kind::CallGate, 0x4A5794, 8, kUI_PBCLOCK_RADIAL_original, kUI_PBCLOCK_RADIAL_replacement, 5},
+    {"UI_TOOLTIP_LINGER", Phase::Phase2a, Kind::JmpDetour, 0x5EE9A3, 8, kUI_TOOLTIP_LINGER_original, kUI_TOOLTIP_LINGER_replacement, 5},
+    {"UI_RADAR_REFRESH_B", Phase::Phase2a, Kind::JmpDetour, 0x450111, 6, kUI_RADAR_REFRESH_B_original, kUI_RADAR_REFRESH_B_replacement, 3},
+    {"INT_FXEV_GATE", Phase::Phase2a, Kind::CallGate, 0x4C7819, 5, kINT_FXEV_GATE_original, kINT_FXEV_GATE_replacement, 2},
+    {"INT_FXEV_PREV", Phase::Phase2a, Kind::CallGate, 0x4BF74A, 6, kINT_FXEV_PREV_original, kINT_FXEV_PREV_replacement, 3},
+    {"INT_ATTMDL_CHK", Phase::Phase2a, Kind::JmpDetour, 0x4C5CF1, 6, kINT_ATTMDL_CHK_original, kINT_ATTMDL_CHK_replacement, 3},
+    {"INT_ATTMDL_DEC", Phase::Phase2a, Kind::CallGate, 0x4C5F5B, 6, kINT_ATTMDL_DEC_original, kINT_ATTMDL_DEC_replacement, 3},
+    {"INT_RIDER_SLEW", Phase::Phase2a, Kind::FuncDetour, 0x4B2520, 8, kINT_RIDER_SLEW_original, kINT_RIDER_SLEW_replacement, 5},
+    {"INT_LASER_TEXCELL", Phase::Phase2a, Kind::CallGate, 0x4C90DD, 6, kINT_LASER_TEXCELL_original, kINT_LASER_TEXCELL_replacement, 3},
+    {"INT_SAIL_SLEW", Phase::Phase2a, Kind::JmpDetour, 0x4D020C, 9, kINT_SAIL_SLEW_original, kINT_SAIL_SLEW_replacement, 6},
+    {"INT_TURRET_2A", Phase::Phase2a, Kind::JmpDetour, 0x4B6F81, 10, kINT_TURRET_2A_original, kINT_TURRET_2A_replacement, 7},
+    {"INT_FLOOR_FADE", Phase::Phase2a, Kind::CallGate, 0x4E3F08, 7, kINT_FLOOR_FADE_original, kINT_FLOOR_FADE_replacement, 4},
+    {"INT_TERRAIN_TILEUPD", Phase::Phase2a, Kind::PtrSlot, 0xBE4794, 4, kINT_TERRAIN_TILEUPD_original, kINT_TERRAIN_TILEUPD_replacement, 1},
 };
 
-inline constexpr uint32_t kSiteCount = 113;
+inline constexpr uint32_t kSiteCount = 128;
 
 // Index of each site in kSites (telemetry counters are indexed the same way).
 enum Index : uint32_t {
@@ -485,6 +530,21 @@ enum Index : uint32_t {
     INT_SUBT_SCROLL = 110,
     INT_UIPART = 111,
     INT_WANIM_RISE = 112,
+    UI_PBCLOCK_IMAGE = 113,
+    UI_PBCLOCK_PLAIN = 114,
+    UI_PBCLOCK_RADIAL = 115,
+    UI_TOOLTIP_LINGER = 116,
+    UI_RADAR_REFRESH_B = 117,
+    INT_FXEV_GATE = 118,
+    INT_FXEV_PREV = 119,
+    INT_ATTMDL_CHK = 120,
+    INT_ATTMDL_DEC = 121,
+    INT_RIDER_SLEW = 122,
+    INT_LASER_TEXCELL = 123,
+    INT_SAIL_SLEW = 124,
+    INT_TURRET_2A = 125,
+    INT_FLOOR_FADE = 126,
+    INT_TERRAIN_TILEUPD = 127,
 };
 
 } // namespace sites

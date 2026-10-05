@@ -25,6 +25,10 @@ int64_t g_freq = 0;
 int64_t g_deadline = 0;    // QPC time the current iteration was released (0 = none: next run is a gap)
 int64_t g_interval = 0;    // interval used for the current iteration
 bool g_halfToggle = false;
+int64_t g_halfPair = 0;     // half the stock frame time (Present spacing target)
+int64_t g_owed = 0;         // time owed after late releases, repaid on later on-time iterations
+int64_t g_releaseTime = 0;  // QPC when the current iteration was released
+int64_t g_lastPresent = 0;  // QPC of the last 60-mode Present submission
 HANDLE g_timer = nullptr;
 bool g_timerTried = false;
 
@@ -150,6 +154,9 @@ void PacerOnModeChange(bool)
     g_windowBRenders = 0;
     g_windowLateSkips = 0;
     g_debtWindows = 0;
+    g_owed = 0;
+    g_releaseTime = 0;
+    g_lastPresent = 0;
 }
 
 int PacerFallbackSecondsLeft()
@@ -184,11 +191,14 @@ extern "C" uint32_t __cdecl AotR60_Pacer(uint8_t* engine)
     int64_t half = pairTicks / 2;
     g_interval = g_halfToggle ? half : pairTicks - half;
 
+    g_halfPair = half;
+
     bool gap = g_deadline == 0 || g_pacerRanRid != g_renderId - 1 || g_gapDevLost || g_gapReset;
     g_gapDevLost = 0;
     g_gapReset = 0;
     if (gap) {
         g_deadline = now;
+        g_owed = 0;
         ++g_pacerStats.gaps;
     }
     else {
@@ -198,20 +208,47 @@ extern "C" uint32_t __cdecl AotR60_Pacer(uint8_t* engine)
         if (late > g_freq / 4) {
             // Alt-tab, minimised window, debugger: a gap, not lost game time.
             g_deadline = now;
+            g_owed = 0;
             ++g_pacerStats.gaps;
         }
-        else if (late > clamp) {
-            g_windowDebt += late - clamp;
-            g_pacerStats.debtTicks += late - clamp;
-            g_deadline = now - clamp;
+        else if (late > 0) {
+            // Released late (a heavy logic tick, a hitch). Start now instead of compressing the following frames
+            // to hold the absolute schedule, and repay the time gradually on later on-time iterations, so long-run
+            // speed stays exact while the presented frames keep an even spacing.
+            ++g_pacerStats.lateReleases;
+            g_pacerStats.lateReleaseTicks += late;
+            int64_t carried = late;
+            if (late > clamp) {
+                g_windowDebt += late - clamp;
+                g_pacerStats.debtTicks += late - clamp;
+                carried = clamp;
+            }
+            g_owed += carried;
+            int64_t cap = 2 * g_interval;
+            if (g_owed > cap) {
+                g_windowDebt += g_owed - cap; // more than two frames behind: count it as lost time
+                g_pacerStats.debtTicks += g_owed - cap;
+                g_owed = cap;
+            }
+            g_deadline = now;
         }
-        else if (late < 0) {
+        else {
+            int64_t pay = g_owed;
+            if (pay > g_interval / 16) {
+                pay = g_interval / 16;
+            }
+            if (pay > -late) {
+                pay = -late;
+            }
+            g_deadline -= pay;
+            g_owed -= pay;
             WaitUntil(g_deadline);
         }
     }
     g_pacerRanRid = g_renderId;
     ++g_pacerStats.iterations;
     EvaluateWindow(now);
+    g_releaseTime = Now();
 
     // The stock limiter's statistics (0x63A1C4..0x63A1D5).
     DWORD exitMs = timeGetTime();
@@ -223,21 +260,64 @@ extern "C" uint32_t __cdecl AotR60_Pacer(uint8_t* engine)
     return exitMs;
 }
 
+// Called right before every 60-mode Present (A and B). Returns nonzero to skip this Present.
 extern "C" int __cdecl AotR60_PresentSkip()
 {
-    if (!OnMainThread() || !g_inB) {
+    if (!OnMainThread()) {
         return 0;
     }
-    if (g_mDrawRid == g_renderId - 1 && g_mDrawAM > 1) {
+    int64_t now = Now();
+    bool bRender = g_inB != 0;
+    if (g_releaseTime != 0) {
+        int64_t sinceRelease = now - g_releaseTime;
+        if (sinceRelease >= 0 && sinceRelease < g_freq) {
+            (bRender ? g_pacerStats.relPresentTicksB : g_pacerStats.relPresentTicksA) += sinceRelease;
+            ++(bRender ? g_pacerStats.relPresentCountB : g_pacerStats.relPresentCountA);
+        }
+    }
+    if (bRender && g_mDrawRid == g_renderId - 1 && g_mDrawAM > 1) {
         ++g_pacerStats.forcedSkips; // camera time multiplier: present only the A-render
         return 1;
     }
-    ++g_windowBRenders;
-    if (g_pacerRanRid == g_renderId - 1 && g_deadline != 0 && Now() - g_deadline >= g_interval) {
-        ++g_windowLateSkips;
-        ++g_pacerStats.lateSkips;
-        return 1;
+    bool immediate = Read<uint32_t>(0xDD302C) == 0x80000000u; // D3DPRESENT_INTERVAL_IMMEDIATE: no vsync
+    if (bRender) {
+        ++g_windowBRenders;
     }
+    if (!immediate) {
+        // FIFO (vsync): drop a B Present that is already a frame late, so the queue can catch up.
+        if (bRender && g_pacerRanRid == g_renderId - 1 && g_deadline != 0 && now - g_deadline >= g_interval) {
+            ++g_windowLateSkips;
+            ++g_pacerStats.lateSkips;
+            return 1;
+        }
+        g_lastPresent = now;
+        return 0;
+    }
+    // No vsync: Presents reach the screen when they are submitted. The A-render does all A-only work before its
+    // Present and the B-render almost none, so space the Presents evenly (half a stock frame apart). The small
+    // slack lets the phase drift earlier when the A-render gets cheaper; the cap keeps time for the logic step.
+    if (g_cfg.presentPacing && g_lastPresent != 0 && g_releaseTime != 0 && g_halfPair > 0) {
+        int64_t target = g_lastPresent + g_halfPair - g_freq / 4000;
+        int64_t latest = g_releaseTime + g_halfPair * 6 / 10;
+        if (target > latest) {
+            target = latest;
+        }
+        if (target > now) {
+            WaitUntil(target);
+            g_pacerStats.presentWaitTicks += target - now;
+            now = Now();
+        }
+    }
+    if (g_lastPresent != 0) {
+        int64_t spacing = now - g_lastPresent;
+        if (spacing > g_pacerStats.presentSpacingMax) {
+            g_pacerStats.presentSpacingMax = spacing;
+        }
+        if (g_pacerStats.presentSpacingMin == 0 || spacing < g_pacerStats.presentSpacingMin) {
+            g_pacerStats.presentSpacingMin = spacing;
+        }
+    }
+    g_lastPresent = now;
     return 0;
 }
 

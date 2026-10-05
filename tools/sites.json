@@ -1,7 +1,8 @@
 {
  "game": "AotR rotwk\\game.dat sha256 cc08275d60ff8e3bfd4374c29d61304dea8336e6dd00ab8add88b1df95a705dc",
  "todo": [
-  "display vt+0x190 at 0x44A1FD deletes a finished subtitle object; in 60 mode this can happen on a B-render (display-only, see group_notes part 2 OBSERVATIONS)"
+  "display vt+0x190 at 0x44A1FD deletes a finished subtitle object; in 60 mode this can happen on a B-render (display-only, see group_notes part 2 OBSERVATIONS)",
+  "client-RNG replay for SMUD heat haze and weather lightning flicker on B (INT_FX_RNG_REPLAY, needs rework: FX render can run more than once per render)"
  ],
  "sites": [
   {
@@ -4345,6 +4346,573 @@
      "note": "Session constant from the INI."
     }
    ]
+  },
+  {
+   "id": "UI_PBCLOCK_IMAGE",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4A49B7",
+   "length": 8,
+   "original_hex": "c6 06 00 e8 df 8c 4d 00",
+   "original_asm": [
+    "0x4A49B7: c6 06 00        mov byte ptr [esi], 0    ; PushButtonData.drawClock = NO_CLOCK (consume the one-shot clock request)",
+    "0x4A49BA: e8 df 8c 4d 00  call 0x97d69e            ; GameWindow::winSetUserData(ESI): mov eax,[esp+4]; mov [ecx+0x2C],eax; ret 4. ECX = window (loaded at 0x4A49B3 from [ebp+8]), ESI pushed at 0x4A49B6"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:STUB_PB_CLOCK_KEEP_B> 90 90 90",
+   "stub": "STUB_PB_CLOCK_KEEP_B (shared by UI_PBCLOCK_IMAGE / UI_PBCLOCK_PLAIN / UI_PBCLOCK_RADIAL). Pure asm at a call boundary, no SSE/x87. Entry: ECX = GameWindow* (thiscall this of 0x97D69E), ESI = PushButtonData*, [esp] = site+5, [esp+4] = ESI (argument the game pushed right before the site).\n  cmp  byte ptr [g_skipB], 0\n  je   .clear\n  push eax\n  mov  eax, fs:[0x24]\n  cmp  eax, dword ptr [g_mainTid]\n  pop  eax\n  je   .keep\n.clear:\n  mov  byte ptr [esi], 0               ; displaced original\n.keep:\n  jmp  dword ptr [g_pfnWinSetUserData] ; = 0x0097D69E; its 'ret 4' pops the pushed ESI and returns to site+5 (3 NOPs), then site+8\n30 mode, 60-mode A-render and any non-main thread: same stores as stock (drawClock=0, userdata re-stored; neither original instruction writes EFLAGS and EFLAGS are dead after the span). 60-mode B-render on the main thread: the clock request armed by A's ControlBar::update is NOT consumed, so B draws the clock too, and the next A-render (= stock render k+1) draws and clears it exactly like stock.",
+   "resume_address": "0x4A49BF",
+   "live_after": "ESI = PushButtonData* (cmp [esi+0xC] at 0x4A49BF, mov esi,[esi+0x10]); EDI/EBX callee-saved (popped at 0x4A4A20/0x4A4A22, untouched by stub and callee); EBP frame and locals [ebp-0x1C..-0x28] (rect). EAX (=ESI after 0x97D69E in stock), ECX, EDX dead (reloaded before use). EFLAGS dead (cmp at 0x4A49BF). x87 depth 0 (fld1 at 0x4A49D3 starts a new value). No XMM live (xmm0 rewritten by cvtsi2ss at 0x4A49DE).",
+   "branch_into_span_check": "Brute rel8/rel32/jcc32 decode of every byte of all executable sections of game.dat: 0 targets in (0x4A49B7,0x4A49BF). Whole-image abs32 scan for 0x4A49B8..0x4A49BE: 0 hits. listing.asm operand scan of the interior: 0 hits. The span end 0x4A49BF is the target of JZ at 0x4A4915 (end-exclusive, allowed); 0x4A49B3 (before the span) is the target of JMP 0x4A4966/JNZ 0x4A496A. Bytes identical in rotwk\\game.dat, the analysed copy of game.dat, aotr\\zGameDats\\delayfix.dat and rotwk\\game820.dat. No sites.json span within 16 bytes, no AotR hook nearby. The call is re-encoded as an indirect tail-jump in the stub, so no rel32 is displaced.",
+   "purpose": "W3DGadgetPushButtonImageDraw, image (non-radial) variant 0x4A4585 (selected by 0x4A5A3E when window+0x84 != 0 and !(instData+0xA & 0x20)): keep the per-update clock request across the B-render so the production/upgrade clock (type 1 normal clock 0x4A422F, type 2 inverse clock 0x4A427E) is drawn on both renders of a pair.",
+   "evidence": "Draw-table at 0xD98DCC: 'W3DGadgetPushButtonImageDraw' -> 0x4A5A3E -> 0x4A4585/0x4A5112. PushButtonData layout (= Generals GadgetPushButton.cpp): +0 drawClock, +4 percent, +8 color, +0xC drawBorder, +0x10 borderColor, +0x18 overlayImage. Setters: GadgetButtonDrawInverseClock 0x729F0C (*data=2) and GadgetButtonDrawClock 0x729ED8 (*data=1); 0x729F0C callers 0x71CB0D (production queue buttons, percent = progress*100), 0x72A153 (each of the 33 command windows ControlBar+0xDC: upgrade (cmd type 3) and unit (6/7/8) production in progress), 0x94397F/0x944911 (context command, special-power recharge) - all only from ControlBar::update 0x71FC08 (vt 0xC23300+0x28), called from InGameUI::update at 0x6A21B0, which is A-only (GATE_GC_IGUI) and runs AFTER the draw (0x648869) in GameClient::update. clrscan of the UI-draw closure found exactly three such consume sites (0x4A49B7, 0x4A5091, 0x4A5794).",
+   "risks": "Exact on A (A_k shows the clock armed by update k-1 = stock render k). B_k shows the clock armed by A_k's update (p_k instead of p_{k-1}), consistent with every other A-only UI state B draws after A's update. If a window were drawn twice in one B-render it would draw the clock twice instead of once (not observed: WM repaint draws each window once per layer). Mode switches happen at pair boundaries; a request left armed by B is consumed by the next stock render. No phase-4b form needed.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1",
+     "note": "existing (C0); 1 only during a 60-mode B-render's clientUpdate on the main thread"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t",
+     "value_30": "main thread id",
+     "value_60_A": "same",
+     "value_60_B": "same",
+     "note": "existing"
+    },
+    {
+     "name": "g_pfnWinSetUserData",
+     "ctype": "uint32_t",
+     "value_30": "0x0097D69E",
+     "value_60_A": "0x0097D69E",
+     "value_60_B": "0x0097D69E",
+     "note": "constant tail-jump target (GameWindow::winSetUserData, 'ret 4'); image base is fixed at 0x400000"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "UI_PBCLOCK_PLAIN",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4A5091",
+   "length": 8,
+   "original_hex": "c6 06 00 e8 05 86 4d 00",
+   "original_asm": [
+    "0x4A5091: c6 06 00        mov byte ptr [esi], 0    ; drawClock = NO_CLOCK",
+    "0x4A5094: e8 05 86 4d 00  call 0x97d69e            ; winSetUserData(ESI); ECX=EDI (window) set at 0x4A508F, ESI pushed at 0x4A508E"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:STUB_PB_CLOCK_KEEP_B> 90 90 90",
+   "stub": "STUB_PB_CLOCK_KEEP_B (shared, see UI_PBCLOCK_IMAGE). Same entry contract: ECX = window, ESI = PushButtonData*, [esp+4] = ESI. B-render (main thread): skip 'mov byte [esi],0'; always tail-jump to 0x97D69E which returns to 0x4A5099-3 (NOPs).",
+   "resume_address": "0x4A5099",
+   "live_after": "ESI = PushButtonData* (cmp [esi+0x28] at 0x4A5099, push esi at 0x4A509F, cmp [esi+0xC]); EDI = window (push edi at 0x4A50A3); [ebp+0xC] instData; EBX callee-saved; EBP frame/locals [ebp-0x8..-0x14]. EAX/ECX/EDX dead. EFLAGS dead (cmp at 0x4A5099). x87 depth 0. No XMM live.",
+   "branch_into_span_check": "Brute rel8/rel32/jcc32 decode: 0 targets in (0x4A5091,0x4A5099). abs32 scan 0x4A5092..0x4A5098: 0. listing.asm operand scan: 0. Span end 0x4A5099 is the target of JZ at 0x4A4FF0 (allowed); 0x4A508E (before the span) is the target of JMP 0x4A5041/JNZ 0x4A5045. Bytes identical in game.dat, delayfix.dat and game820.dat. No sites.json span or AotR hook nearby.",
+   "purpose": "W3DGadgetPushButtonDraw 0x4A4E03 (draw table 0xD98DD0, non-image push buttons): same one-shot clock consumption as UI_PBCLOCK_IMAGE; keep the request across the B-render.",
+   "evidence": "0x4A4E03 decompile/asm: getUserData 0x9A5E08 at 0x4A4F8C, type 1 -> 0x4A422F, type 2 -> 0x4A427E, then 'mov byte [esi],0; call 0x97D69E' at 0x4A5091. Same setters/update path as UI_PBCLOCK_IMAGE.",
+   "risks": "As UI_PBCLOCK_IMAGE. Order verified 2026-10-05: draw 0x648869 precedes InGameUI::update 0x6488AE, so the B-render must keep (not consume) the request armed by the A-render's ControlBar::update; the next A-render consumes it as stock render k+1 does.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    },
+    {
+     "name": "g_pfnWinSetUserData",
+     "ctype": "uint32_t",
+     "value_30": "0x0097D69E",
+     "value_60_A": "0x0097D69E",
+     "value_60_B": "0x0097D69E"
+    }
+   ],
+   "verification": "sweep 2026-10-05: needs_changes by adversarial verifier"
+  },
+  {
+   "id": "UI_PBCLOCK_RADIAL",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4A5794",
+   "length": 8,
+   "original_hex": "c6 06 00 e8 02 7f 4d 00",
+   "original_asm": [
+    "0x4A5794: c6 06 00        mov byte ptr [esi], 0    ; drawClock = NO_CLOCK",
+    "0x4A5797: e8 02 7f 4d 00  call 0x97d69e            ; winSetUserData(ESI); ECX=EDI (window) set at 0x4A5792, ESI pushed at 0x4A5791"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:STUB_PB_CLOCK_KEEP_B> 90 90 90",
+   "stub": "STUB_PB_CLOCK_KEEP_B (shared, see UI_PBCLOCK_IMAGE). Same entry contract: ECX = window, ESI = PushButtonData*, [esp+4] = ESI. B-render (main thread): skip the clear; always tail-jump to 0x97D69E, which returns to 0x4A5799 (NOPs) -> 0x4A579C.",
+   "resume_address": "0x4A579C",
+   "live_after": "ESI = PushButtonData* (cmp [esi+0xC] 0x4A57A2, [esi+0x10], cmp [esi+0x28] 0x4A5802, push esi 0x4A5808); EDI = window (push edi 0x4A580C, mov ecx,edi 0x4A5815); EBX callee-saved; [ebp-0xD] (clock/selected flag), [ebp+0xC] instData, rect locals [ebp-0x20..-0x2C]. EAX/ECX/EDX dead. EFLAGS dead (cmp [ebp-0xD] at 0x4A579C). x87 depth 0 (the fld/fstp pairs of the type-2 path are balanced before 0x4A578C). No XMM live.",
+   "branch_into_span_check": "Brute rel8/rel32/jcc32 decode: 0 targets in (0x4A5794,0x4A579C). abs32 scan 0x4A5795..0x4A579B: 0. listing.asm operand scan: 0. Span end 0x4A579C is the target of JZ at 0x4A5609 (allowed); 0x4A5791 (before the span) is the target of JMP 0x4A5661, JNZ 0x4A5669, JGE 0x4A5675. Bytes identical in game.dat, delayfix.dat and game820.dat. No sites.json span or AotR hook nearby.",
+   "purpose": "Radial/cameo variant of W3DGadgetPushButtonImageDraw (0x4A5112, uses Cameo_push/Cameo_hilited/RadialPush/RadialOver/RadialBorder and RadialClockOverlay1/2 via 0x4A42CD for the type-2 inverse clock with percent < 100): this is the progress clock on the palantir/command-bar cameo buttons while an upgrade or unit is being produced. Keep the request across the B-render.",
+   "evidence": "0x4A5112 asm 0x4A55A3..0x4A579C: getUserData, type 1 -> 0x4A422F, type 2 && percent<100 -> two 0x4A42CD draws with images [0xDCBB50] (RadialClockOverlay1) and [0xDCBB4C] (RadialClockOverlay2), then 'mov byte [esi],0; call 0x97D69E'. Strings 0xBDF1D0/0xBDF1B8 referenced only here, in 0x71EFF9 (image preload) and in the APT 'TimerOverlay' render callback 0x815920 (pure draw; AotR's Palantir.apt does not reference TimerOverlay).",
+   "risks": "As UI_PBCLOCK_IMAGE. This is the site that fixes the reported upgrade-icon shimmer; all three should be installed together because the button style decides which of the three draws runs. Order verified 2026-10-05: draw 0x648869 precedes InGameUI::update 0x6488AE, so the B-render must keep (not consume) the request armed by the A-render's ControlBar::update; the next A-render consumes it as stock render k+1 does.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    },
+    {
+     "name": "g_pfnWinSetUserData",
+     "ctype": "uint32_t",
+     "value_30": "0x0097D69E",
+     "value_60_A": "0x0097D69E",
+     "value_60_B": "0x0097D69E"
+    }
+   ],
+   "verification": "sweep 2026-10-05: needs_changes by adversarial verifier"
+  },
+  {
+   "id": "UI_TOOLTIP_LINGER",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x5EE9A3",
+   "length": 8,
+   "original_hex": "8d 86 04 13 00 00 ff 08",
+   "original_asm": [
+    "0x5EE9A3: 8d 86 04 13 00 00  lea eax, [esi + 0x1304]   ; tooltip hide-grace counter",
+    "0x5EE9A9: ff 08              dec dword ptr [eax]       ; -1 per draw once the tooltip should be hidden"
+   ],
+   "kind": "jmp_detour",
+   "replacement_hex": "e9 <rel32:CAVE_TOOLTIP_LINGER> 90 90 90",
+   "stub": "CAVE_TOOLTIP_LINGER (pure asm, no SSE/x87):\n  lea  eax, [esi+0x1304]\n  cmp  byte ptr [g_skipB], 0\n  je   .dec\n  push eax\n  mov  eax, fs:[0x24]\n  cmp  eax, dword ptr [g_mainTid]\n  pop  eax\n  je   .resume\n.dec:\n  dec  dword ptr [eax]\n.resume:\n  jmp  0x005EE9AB        ; cmp dword [eax],ebx ; jg 0x5EE9BB\n30 mode / A-render / other thread: lea + dec as stock (dec's flags are dead: cmp follows). 60 B-render (main thread): no decrement, so the 4-draw grace stays 4 pairs (132 ms) as in stock.",
+   "resume_address": "0x5EE9AB",
+   "live_after": "EAX = &this->[0x1304] (cmp [eax],ebx at 0x5EE9AB); EBX = 0 (xor at 0x5EE7FE); ESI = Mouse this; EDI = this+0x12F8 (mov ecx,edi at 0x5EE9B4); EBP frame. EFLAGS dead (cmp at 0x5EE9AB). x87 depth 0. No XMM live.",
+   "branch_into_span_check": "Brute rel8/rel32/jcc32 decode: 0 targets in (0x5EE9A3,0x5EE9AB). abs32: 0. listing.asm: branches in this function go to 0x5EE992 and 0x5EE9BB only. Bytes identical in game.dat, delayfix.dat and game820.dat. No sites.json span or AotR hook nearby.",
+   "purpose": "Mouse tooltip draw 0x5EE7A8 (called only from W3DMouse draw 0x498CBC = TheMouse vt+0x30, drawFrame every render): when the tooltip should disappear, the counter [this+0x1304] (set to 4 at 0x5EE986 while shown) is decremented per draw and the tooltip is hidden at <=0 (0x782CA0). Per-draw integer counter -> the tooltip lingers 66 ms instead of 132 ms at 60. Make the decrement A-only.",
+   "evidence": "0x5EE7A8 decompile/asm 0x5EE986..0x5EE9BB; tooltip show/hide timing itself is timeGetTime-based (correct); only this linger counter is per draw.",
+   "risks": "Very low visual impact (tooltip hide delay 66 vs 132 ms). Integer counter: no 4b half-step form; stays A-only. Optional.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "UI_RADAR_REFRESH_B",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x450111",
+   "length": 6,
+   "original_hex": "8b 0d 88 43 de 00",
+   "original_asm": [
+    "0x450111: 8b 0d 88 43 de 00  mov ecx, dword ptr [0xde4388]   ; TheGameClient, for getFrame()%6 refresh test"
+   ],
+   "kind": "jmp_detour",
+   "replacement_hex": "e9 <rel32:CAVE_RADAR_REFRESH> 90",
+   "stub": "CAVE_RADAR_REFRESH (reached only on the non-dirty path, [esi+0x1464]==0; pure asm):\n  mov  ecx, dword ptr [0x00DE4388]      ; displaced original\n  push eax\n  mov  eax, dword ptr [ecx+0x10]        ; m_frame (= GC vt7C getFrame 0x9F9F1A)\n  cmp  byte ptr [g_skipB], 0\n  je   .recordA\n  push edx\n  mov  edx, fs:[0x24]\n  cmp  edx, dword ptr [g_mainTid]\n  pop  edx\n  jne  .stock\n  cmp  eax, dword ptr [g_radarAFrame]\n  jne  .stock\n  pop  eax\n  jmp  0x00450177                       ; B: A already ran this exact m_frame%6 test (and refresh) -> skip\n.recordA:\n  mov  dword ptr [g_radarAFrame], eax\n.stock:\n  pop  eax\n  jmp  0x00450117                       ; stock: mov eax,[ecx]; call [eax+0x7C]; %6 ...",
+   "resume_address": "0x450117",
+   "live_after": "Stock exit 0x450117: ECX = TheGameClient (vt call), ESI = W3DRadar this, EBP frame ([ebp+0x18] alpha, locals); EAX loaded there; EDX dead (xor at 0x45011E). B exit 0x450177: EAX/ECX/EDX dead (xmm0 and ECX reloaded at 0x450177/0x45017C), ESI/EBP live. EFLAGS dead on both (flags of cmp 0x450108 were consumed by jne 0x45010F). x87 depth 0. No XMM live.",
+   "branch_into_span_check": "Brute rel8/rel32/jcc32: 0 targets in (0x450111,0x450117). abs32: 0. listing.asm: 0x45010F jne targets 0x450127, 0x450125 jne targets 0x450177 (outside). Bytes identical in game.dat, delayfix.dat and game820.dat. No sites.json span or AotR hook nearby.",
+   "purpose": "W3DRadar::draw 0x44FDF3 (vtable 0xBDADD4 slot +0x1C, from W3DLeftHUDDraw 0x49D6FD) rebuilds the radar unit-overlay texture (0x53285C/0x516130/0x576550, 0x44F9DA x2) when dirty or when getFrame()%6==0. A and B share m_frame and no logic runs between them, so on 60-mode pairs the same refresh runs twice with identical output. Optional perf fix: skip the duplicate on B.",
+   "evidence": "0x44FDF3 decompile/asm 0x450108..0x450177; radar object lists are updated only by Radar::update (A-only gate GATE_CU_RADAR) and by logic (after B).",
+   "risks": "Performance only, no visual change (B's refresh would produce the same texture). If A did not draw the radar this m_frame (or took the dirty path), g_radarAFrame != m_frame and B takes the stock path. Optional; only worth installing if radar refresh shows up in frame-time spikes.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    },
+    {
+     "name": "g_radarAFrame",
+     "ctype": "uint32_t",
+     "value_30": "last m_frame seen by the radar draw",
+     "value_60_A": "m_frame of A's radar draw",
+     "value_60_B": "unchanged (read only)",
+     "note": "init 0xFFFFFFFF; DLL bookkeeping only"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "INT_FXEV_GATE",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4C7819",
+   "length": 5,
+   "original_hex": "e8 4a 56 ff ff",
+   "original_asm": [
+    "0x4C7819: e8 4a 56 ff ff  call 0x4bce68"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:STUB_FXEV_GATE>",
+   "stub": "STUB_FXEV_GATE: cmp byte [g_skipA],0 ; je .run ; push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .run ; ret ; .run: jmp 0x004BCE68. This is a tail jump: ECX=EBX=this is set at 0x4C7817, and 0x4BCE68 is __thiscall with no stack args and ends in a plain 'ret' at 0x4BD1E5. In 30 mode and on B: stock. On a 60-mode A-render the per-draw frame-event evaluator is skipped, so FXEvent, LuaEvent, ParticleSysBone-FX and ModelConditionState FXEvents are evaluated once per pair, on the B-render. The C3 lag phase makes B's animation frame equal stock render k's. Must be installed together with INT_FXEV_PREV. g_skipA is a new DLL var (g_m60 && !g_inB && g_inClientUpdate). C0 writes it at the same two points as g_skipB, and the reset hook and mode-off clear it. Inline alternative: cmp g_m60 / g_inClientUpdate / g_inB.",
+   "resume_address": "0x4C781E",
+   "live_after": "EBX (this, read at 0x4C781E 'mov eax,[ebx+8]'). ESI/EDI/EBP are callee-saved and untouched by the stub. EAX is dead (overwritten at 0x4C781E; 0x4BCE68 is void). EFLAGS dead ('test esi,esi' at 0x4C7827). x87 depth 0 (thiscall boundary). No XMM live.",
+   "branch_into_span_check": "No hits inside (0x4C7819,0x4C781E) from the brute rel8/rel32/jcc32 decode of every executable section (AotR sections included), the whole-image abs32 scan, or the listing.asm operand scan. 0x4C7819 is the only call of 0x4BCE68 (no pointers to it). Bytes are identical in delayfix.dat and game820.dat. No sites.json span or AotR hook within 16 bytes.",
+   "purpose": "Frame-triggered animation events in W3DModelDraw (W3DScriptedModelDraw/Horde/Quadruped/Supply/Sail, doDrawModule 0x4C72BE) are tested on every draw. Integer-frame-equality FXEvents (no FireWhenSkipped), FrameStop ranges, frame-less and ModelConditionState FXEvents, LuaEvent Frame triggers and ParticleSysBone-FX events therefore fire about twice per animation frame in 60 mode. This site moves their evaluation to the B-render only.",
+   "evidence": "FUN_004BCE68 (called only from 0x4C7819 in doDrawModule):\n- loop 1, state+0x78 FXEvents: fires FUN_004BABBA (FXList at a bone or the object, via 0x4B1B5A/0x494615) when Frame <= (int)cur <= FrameStop or cur == Frame, or Frame < 0 with FrameStep 0 (every draw). Only FireWhenSkipped entries use the prev/cur crossing test 0x4B337B.\n- LuaEvent: 0x4B91E2 fires on (int)cur == Frame.\n- loop 2, state+0x84 ParticleSysBone-FX: appends PSB entries and sets the +0x48 rebuild flag.\n- tail loop at 0x4BD196: state+0xB8 ModelConditionState FXEvents fire on every draw, unconditionally.\nThe animation frame advances by the W3D sync delta in 0x4BF560, which C3 splits about 16/17 per render. Each integer frame therefore lasts about 2 draws in 60 mode versus about 1 in stock.\nAotR data: 3389 FXEvents in total; 768 non-FireWhenSkipped FXEvents in playable objects (gandalf.ini 21, huorn 20, dwalin 16, entwives 15, witchking 12+12+10, elessar 10, corsairship 8; FX_SplatDust on cavalry and riders 101); 5 ModelConditionState FXEvents (baraddur FX_BaradDurWaveDust; khandish/easterling chariot and dwarven battlewagon FX_HordeResurrection) that fire every draw; 31 LuaEvent Frame triggers (troll show_rock/hide_rock).\nThe FXs contain particle systems, sounds and dynamic decals (for example FX_GandalfPreAttackBlastRealNEW: 4 particle systems plus GandalfSpellVoice; FX_EntFootStep: dust plus footprint decal).",
+   "risks": "Design choice (option B). The event FX is spawned on the B-render, the render whose animation frame and bone pose equal stock render k's. This follows the stock timing and positions exactly, but it means B creates FX (particle systems, sounds, decals). These are client-only (nuggets use the client RNG 0x6D32E4/0x6D343B; no logic-RNG callers in the FXList code 0x5D0000-0x5E4000).\nOption C, if the team prefers that B never spawns anything: same two addresses with the predicates swapped. Here, INT_FXEV_GATE skips the call on g_skipB, and INT_FXEV_PREV skips the store on g_skipA. Events are then evaluated on A over (a_{n-1}, a_n], which is count-exact but offset by half a step.\nEdge cases, both options: a module drawn on only one render of a pair would lose or repeat one window. In normal flow both renders draw the same region with the same camera M_k, and B advances iff A advanced (C3). An iface anim query (0x4C0B1B..0x4C0E73) during B's clientUpdate only runs 0x4BF560 with the B rule, which is consistent.\nNo 4b form is needed (event-based).",
+   "dll_vars": [
+    {
+     "name": "g_skipA",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "1 (inside the A-render's clientUpdate)",
+     "value_60_B": "0",
+     "note": "new; written by C0 at the same points as g_skipB"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "INT_FXEV_PREV",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4BF74A",
+   "length": 6,
+   "original_hex": "89 46 04 8b 46 0c",
+   "original_asm": [
+    "0x4BF74A: 89 46 04  mov dword ptr [esi + 4], eax",
+    "0x4BF74D: 8b 46 0c  mov eax, dword ptr [esi + 0xc]"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:STUB_FXEV_PREV> 90",
+   "stub": "STUB_FXEV_PREV: cmp byte [g_skipB],0 ; je .stock ; push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .stock ; mov eax,[esi+0xC] ; ret ; .stock: mov [esi+0x4],eax ; mov eax,[esi+0xC] ; ret.\n- 30 mode and A: stock. The per-channel previous animation frame +0x118/+0x134/+0x150 is set to the current frame before the advance.\n- B: the store is skipped. After B's advance the channel holds prev = the frame before the A-render's advance (= stock render k-1's frame) and cur = stock render k's frame, so the B-only evaluation in INT_FXEV_GATE sees exactly stock render k's (prev,cur] window. That window drives the FireWhenSkipped crossing test 0x4B337B and the FrameStop skip test that reads [ebx+8] at 0x4BCF51.\n- Side effect: after B (logic time) prev/cur equal stock's values.\nThe stub touches no XMM or x87 register.",
+   "resume_address": "0x4BF750",
+   "live_after": "EAX = [esi+0xC] (anim mode; 'dec eax' at 0x4BF750 feeds the je/dec chain). XMM1 = frame count - 1 (stored to [ebp-4] at 0x4BF751). ESI (channel ptr), EDI (this), EBX = 0 (stored at 0x4BF756), [ebp-8]/[ebp-0xC]. EFLAGS dead ('dec eax' rewrites them). x87 depth 0 (fstp at 0x4BF736, then the int-returning call [eax+0x14]).",
+   "branch_into_span_check": "No hits inside (0x4BF74A,0x4BF750) from the brute rel8/rel32/jcc32 decode, the abs32 scan or the listing operand scan. The only other [esi+4] reference in 0x4BF560, at 0x4BFA7A, uses a different ESI ([edi+0x18]). Bytes are identical in delayfix.dat and game820.dat. Nothing within 16 bytes.",
+   "purpose": "Companion of INT_FXEV_GATE. It keeps the per-channel previous-frame field at the A-render's value during the B-render, so B's event evaluation covers the whole stock frame step.",
+   "evidence": "0x4BF560 runs on every draw whose W3D sync changed (0x4BFAF4: [0xDC7580] != [this+0xB8]), that is on both A and B in 60 mode. Its loop over the 3 animation channels (+0x110/+0x12C/+0x148) does 'mov [esi+4],eax' (prev = cur) and then advances cur by dt*rate. Writers of +0x118 besides this store are 0x4B3365, 0x4B521D/0x4B52BA (construction frame, from updateDrawable on A) and xfer. 0x4BCE68 reads prev via [ebx+8] (0x4BCF51) and 0x4B337B.",
+   "risks": "Must be installed together with INT_FXEV_GATE. If installed alone, B's window would cover A's half as well, and with the gate unchanged the events would be duplicated. Under option C (see INT_FXEV_GATE) the predicate here becomes g_skipA.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "INT_ATTMDL_CHK",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4C5CF1",
+   "length": 6,
+   "original_hex": "83 7e 1c 00 7f 36",
+   "original_asm": [
+    "0x4C5CF1: 83 7e 1c 00  cmp dword ptr [esi + 0x1c], 0",
+    "0x4C5CF5: 7f 36  jg 0x4c5d2d"
+   ],
+   "kind": "jmp_detour",
+   "replacement_hex": "e9 <rel32:CAVE_ATTMDL_CHK> 90",
+   "stub": "CAVE_ATTMDL_CHK: cmp byte [g_skipB],0 ; je .stock ; push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .stock ; jmp 0x004C5D2D ; .stock: cmp dword [esi+0x1C],0 ; jg 0x004C5D2D ; jmp 0x004C5CF7.\n- 30 mode and A: stock. An entry whose lifetime is <= 0 is removed from the scene and erased.\n- B: every entry takes the alive path. It is re-posed at B's bone transform and never removed, so expiry happens on the following A-render, exactly when stock render k+1 would remove it.",
+   "resume_address": "0x4C5CF7 (stock remove path) / 0x4C5D2D (alive path)",
+   "live_after": "ESI (entry), EDI (this), EBX (&list at this+0x164), EBP frame. EAX is dead at both targets (0x4C5CF7 'lea eax'; 0x4C5D2D 'mov eax,[esi+4]'). EFLAGS dead at both. x87 depth 0. No XMM live (the pose path reloads).",
+   "branch_into_span_check": "0x4C5CF1 is the loop head ('jne 0x4C5CF1' at 0x4C5F67), which is a span start and therefore allowed. No brute-rel, abs32 or listing hits inside (0x4C5CF1,0x4C5CF7). Bytes are identical in delayfix.dat and game820.dat.",
+   "purpose": "Part 1 of the AttachedModel lifetime fix (FX nugget 'AttachedModel': stuck arrows). The per-draw lifetime countdown in W3DModelDraw's attached-render-object list (this+0x164, 0x20-byte entries, lifetime at +0x1C) must run on A only. B must neither count down nor remove.",
+   "evidence": "0x4C5CC5 is called on every draw (doDrawModule 0x4C72BE -> 0x4C6514 -> 0x4C6D7F when the PSB-dirty flag is clear). For each entry it either removes it (lifetime < 1: scene Remove 0x4C5D10, release, erase 0x4C444C) or re-poses it (Get_Bone_Transform vt+0xD0, rotation, Set_Transform vt+0x54) and then runs 'dec [esi+0x1c]' at 0x4C5F5B.\nEntries come from FXList nugget AttachedModel (ctor 0x5DFF7A, fields Modelname +0x148, RandomlyRotate +0x14C, ExpireTimer +0x150, default LTR*8 = 40 draws; execute 0x5DFFA8 -> drawable 0x67654E -> iface +0x8C 0x4C436D -> 0x4C3A02 -> 0x4C2B81), attached to a random 'BAT_' bone (list +0x170 filled at 0x4C4D53).\nAotR: fxlist.ini FX_GoodArrowHit and FX_EvilArrowHit 'AttachedModel Modelname = g_arrow' (default ExpireTimer), used by damagefx.ini MajorFX GOOD_ARROW_PIERCE/EVIL_ARROW_PIERCE in 4 DamageFX blocks. The BFME2 W3D.big has 876 'BAT_' hits, plus 101 AotR models.",
+   "risks": "Must be installed with INT_ATTMDL_DEC. Integer countdown, so there is no 4b form (an optional 4b variant would double ExpireTimer at creation).",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "INT_ATTMDL_DEC",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4C5F5B",
+   "length": 6,
+   "original_hex": "ff 4e 1c 83 c6 20",
+   "original_asm": [
+    "0x4C5F5B: ff 4e 1c  dec dword ptr [esi + 0x1c]",
+    "0x4C5F5E: 83 c6 20  add esi, 0x20"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:STUB_ATTMDL_DEC> 90",
+   "stub": "STUB_ATTMDL_DEC: cmp byte [g_skipB],0 ; je .stock ; push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .stock ; add esi,0x20 ; ret ; .stock: dec dword [esi+0x1C] ; add esi,0x20 ; ret. 30 mode and A: stock. B: the attached model's per-draw lifetime is not decremented.",
+   "resume_address": "0x4C5F61",
+   "live_after": "ESI (next entry; 'cmp esi,[edi+0x168]' at 0x4C5F61), EDI (this), EBX. EAX/ECX/EDX dead (the loop head reloads them). EFLAGS dead (cmp at 0x4C5F61). x87 depth 0 (after the thiscall vt+0x54, or via 'je 0x4C5F5B' from 0x4C5D33). No XMM live.",
+   "branch_into_span_check": "'je 0x4C5F5B' at 0x4C5D33 targets the span start (allowed). 0x4C5F61 (span end) is targeted by 'jmp' at 0x4C5CEC and 0x4C5D28 (allowed). No brute-rel, abs32 or listing hits inside (0x4C5F5B,0x4C5F61). Bytes are identical in delayfix.dat and game820.dat.",
+   "purpose": "Part 2 of the AttachedModel lifetime fix. Without it, stuck arrows (g_arrow) vanish after about 0.66 s instead of about 1.32 s in 60 mode.",
+   "evidence": "See INT_ATTMDL_CHK. 0x4C5CC5 has no other caller and no pointer to it.",
+   "risks": "Install together with INT_ATTMDL_CHK. With only this site, an entry reaching 0 on A would be removed on B, one 60 Hz frame early.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "INT_RIDER_SLEW",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4B2520",
+   "length": 8,
+   "original_hex": "8b 44 24 04 f3 0f 10 00",
+   "original_asm": [
+    "0x4B2520: 8b 44 24 04  mov eax, dword ptr [esp + 4]",
+    "0x4B2524: f3 0f 10 00  movss xmm0, dword ptr [eax]"
+   ],
+   "kind": "func_detour",
+   "replacement_hex": "e9 <rel32:CAVE_RIDER_SLEW> 90 90 90",
+   "stub": "CAVE_RIDER_SLEW: cmp byte [g_skipB],0 ; je .stock ; push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .stock ; ret ; .stock: mov eax,[esp+4] ; movss xmm0,[eax] ; jmp 0x004B2528.\n- The function is cdecl (float* angle, float target) and the caller pops 8 bytes.\n- 30 mode and A: stock. The heading at module+0x8C moves toward the target by at most 0.1 rad ([0xBD83D4]), then wraps to [-pi,pi].\n- B: plain ret. The heading keeps A's value, and both callers then read it through the preserved ECX.",
+   "resume_address": "0x4B2528",
+   "live_after": "At entry: [esp+4] = float* angle (= ECX at both call sites), [esp+8] = target. Both callers (0x4B6987 in 0x4B686D, 0x4B4655 in 0x4B4538) read 'movss xmm0,[ecx]' after the call. ECX must be preserved, and both cave paths leave it untouched. EAX, XMM and EFLAGS are not read by the callers after return. x87 depth 0 (the caller fstp'd the argument).",
+   "branch_into_span_check": "No brute-rel, abs32 or listing hits inside (0x4B2520,0x4B2528). No pointer to 0x4B2520; its only callers are 0x4B4655 and 0x4B6987, both on the per-draw path 0x4C76D0 -> 0x4B686D. Bytes are identical in delayfix.dat and game820.dat.",
+   "purpose": "Per-draw rate-limited heading slew (0.1 rad per call) for a W3DModelDraw attached to another drawable's bone (attach id this+0xA4 and bone this+0xB4, set by iface +0x44 at 0x4B86BA). Example: passengers shown on container bones turning toward their target (0x4B4538) or toward the parent bone's heading. The step is made A-only, so the turn rate stays at stock 3 rad/s instead of 6 rad/s.",
+   "evidence": "doDrawModule 0x4C72BE calls 0x4B686D at 0x4C76D0 on every draw. Its first block (this+0xA4 != 0, parent bone found by 0x672B5B, parent object's +0x258 module vt+0xB4 true) calls 0x4B4538, whose path toward the target calls 0x4B2520(this+0x8C, ...) at 0x4B4655, or calls 0x4B2520 directly at 0x4B6987. 0x4B2520 adds or subtracts [0xBD83D4] = 0.1f per call. AotR: 'PassengerBonePrefix' appears in 125 INI files (towers, garrisons, howdahs, ships).",
+   "risks": "Linking 'iface +0x44 callers = passenger containers' is inferred from the field names and was not traced to a specific contain module. The site is exact for any caller of 0x4B2520, because both callers are per-draw. 4b: no exact form (clamped slew); 0.05 per render is a close approximation.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "INT_LASER_TEXCELL",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4C90DD",
+   "length": 6,
+   "original_hex": "ff 46 28 8b 4e 18",
+   "original_asm": [
+    "0x4C90DD: ff 46 28  inc dword ptr [esi + 0x28]",
+    "0x4C90E0: 8b 4e 18  mov ecx, dword ptr [esi + 0x18]"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:STUB_LASER_TEXCELL> 90",
+   "stub": "STUB_LASER_TEXCELL: cmp byte [g_skipB],0 ; je .stock ; push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .stock ; mov ecx,[esi+0x18] ; ret ; .stock: inc dword [esi+0x28] ; mov ecx,[esi+0x18] ; ret. 30 mode and A: stock. B: the W3DLaserDraw texture-cell index is not advanced. The wrap test that follows leaves it unchanged, because it is already below the count.",
+   "resume_address": "0x4C90E3",
+   "live_after": "ECX = [esi+0x18] (texture vector end; 'sub ecx,[esi+0x14]' at 0x4C90E3). ESI (this), EDI, EBX. EAX dead ('mov eax,[esi+0x28]' at 0x4C90E6). EFLAGS dead (sub at 0x4C90E3). x87 depth 0. No XMM live.",
+   "branch_into_span_check": "0x4C90DD is targeted by 'je 0x4C90DD' at 0x4C8AD8 (not dirty) and 'jbe' at 0x4C8AEF. Both target the span start, which is allowed. No brute-rel, abs32 or listing hits inside (0x4C90DD,0x4C90E3). Bytes are identical in delayfix.dat and game820.dat.",
+   "purpose": "W3DLaserDraw::doDrawModule (0x4C8A6C, vtable 0xBE1938 slot +0x2C): the animated-texture cell index [this+0x28] steps once per draw, including non-dirty draws. The cell is applied (0x55DB80) only on dirty draws, and LaserUpdate's clientUpdate (A-only) sets the dirty flag every client frame, so the texture animation runs twice as fast and shows every other cell. This site makes the step A-only.",
+   "evidence": "Disassembly 0x4C8A6C..0x4C90F4. The not-dirty path jumps straight to 0x4C90DD. The dirty flag LaserUpdate+0x24 is set in 0x764E88 (clientUpdate, m_frame based) and cleared at 0x4C8AE2. The width envelope 0x740659 is stepped only inside the dirty block, so it is already A-only. AotR: goodfactionsubobjects.ini lines 4274, 4452, 4502 ('Texture = EXGandalfStaffBeam_00001..21', 'EXlightning_00001..18').",
+   "risks": "None beyond the module. Integer index, so there is no 4b form.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "INT_SAIL_SLEW",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4D020C",
+   "length": 9,
+   "original_hex": "80 bf ec 02 00 00 00 74 50",
+   "original_asm": [
+    "0x4D020C: 80 bf ec 02 00 00 00  cmp byte ptr [edi + 0x2ec], 0",
+    "0x4D0213: 74 50  je 0x4d0265"
+   ],
+   "kind": "jmp_detour",
+   "replacement_hex": "e9 <rel32:CAVE_SAIL_SLEW> 90 90 90 90",
+   "stub": "CAVE_SAIL_SLEW: cmp byte [edi+0x2EC],0 ; je .first ; cmp byte [g_skipB],0 ; je .slew ; push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .slew ; movss xmm0,[edi+0x2E8] ; movss [ebp+8],xmm0 ; jmp 0x004D0265 ; .first: jmp 0x004D0265 ; .slew: jmp 0x004D0215.\n- 30 mode and A: stock. The sail angle [this+0x2E8] moves toward the wind-relative target by at most AboutDamping (module data +0x190) per draw.\n- B, after the first draw: [ebp+8] is set to A's angle, so 0x4D0265 stores the same value and B redraws A's sail.\n- First draw (+0x2EC == 0): stock path on every render.",
+   "resume_address": "0x4D0215 (slew) / 0x4D0265 (store)",
+   "live_after": "[ebp+8] (angle), EDI (this), EBX (module data); ECX is only pushed as stack space. EFLAGS dead at both targets (0x4D0215 fld; 0x4D0265 movss). XMM0 dead at both (reloaded at 0x4D0238 / 0x4D0265 before use). x87 depth 0 (fstp at 0x4D0208, or 'fstp st(0)' at 0x4D01E2 on the jbe path).",
+   "branch_into_span_check": "'jbe 0x4D020C' at 0x4D01F6 targets the span start (allowed). 'je 0x4D0265' is inside the span and is re-encoded in the cave. No brute-rel, abs32 or listing hits inside (0x4D020C,0x4D0215). Bytes are identical in delayfix.dat and game820.dat.",
+   "purpose": "W3DSailModelDraw vt+0x104 (0x4D00CD; vtable 0xBE3C40). It is called per draw from 0x4B686D at 0x4B6B26 when AttachToBoneInAnotherModule is set. The rate-limited sail swing is made A-only, so sails do not turn twice as fast.",
+   "evidence": "Disassembly 0x4D01D4..0x4D0280: 'subss/addss xmm0,[ebx+0x190]' rate limit, store at 0x4D0272. The field table at 0xBE3B30 has MaxRotationDegrees +0x188, BlowingThresholdDegrees +0x18C and AboutDamping +0x190. AotR: W3DSailModelDraw is active in corsairship.ini (AboutDamping = 0.1), transportship.ini and elvenship.ini. In mumakil/huorn/matriarch it is commented out.",
+   "risks": "Ships only (water maps). 4b: halving AboutDamping is approximate (clamped).",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "INT_TURRET_2A",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4B6F81",
+   "length": 10,
+   "original_hex": "a1 24 43 de 00 f3 0f 10 48 3c",
+   "original_asm": [
+    "0x4B6F81: a1 24 43 de 00  mov eax, dword ptr [0xde4324]",
+    "0x4B6F86: f3 0f 10 48 3c  movss xmm1, dword ptr [eax + 0x3c]"
+   ],
+   "kind": "jmp_detour",
+   "replacement_hex": "e9 <rel32:CAVE_TURRET_FRAC> 90 90 90 90 90",
+   "stub": "CAVE_TURRET_FRAC: mov eax,[0x00DE4324] ; movss xmm1,[eax+0x3C] ; cmp byte [g_skipB],0 ; je .out ; cmp byte [g_featPresent],0 ; jne .out ; push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .out ; ucomiss xmm1,[0x00BD1908] ; jp .out ; jne .out ; xorps xmm1,xmm1 ; .out: jmp 0x004B6F8B.\n- 30 mode, A, and 2b (presentation on): stock.\n- 2a only (g_featPresent = 0), on a B-render whose fraction is exactly 1.0: the turret code sees fraction 0. It shows yaw [this+0x2C8] (the value A just shifted in, i.e. A's picture), pitch is unchanged (raw target), and it does not do the second prev/cur shift.",
+   "resume_address": "0x4B6F8B",
+   "live_after": "XMM1 = fraction (stored to [ebp+0x58] at 0x4B6F96 and used for the yaw and pitch shift decisions). XMM0 = 0.0 from 0x4B6F64, used later at 0x4B7003; the cave does not touch it. ESI (this), EDI (turret entry), loop vars [ebp+0x60]/[ebp+0x68]. EAX dead (reloaded at 0x4B6F8B). EFLAGS dead ('test ebx,ebx' at 0x4B6F94). x87 depth 0.",
+   "branch_into_span_check": "'jne 0x4B6F81' at 0x4B6F75 targets the span start (allowed). One brute-rel hit, 0x4B6F72 -> 0x4B6F84, lies inside 'cmp dword [edi+0x10],0' at 0x4B6F71 (byte 0x7F); it is a mid-instruction false positive. No abs32 or listing hits. Bytes are identical in delayfix.dat and game820.dat.",
+   "purpose": "Turret and barrel angles in 0x4B6F12 (doDrawModule 0x4C7789) shift prev<-cur<-target when the stepper fraction == 1.0, and lerp otherwise. In 2a (no presentation window) A and B both render k=6 with fraction 1.0, so the shift runs twice per tick. Turrets then hold still and jump once per tick (5 Hz) instead of interpolating. With 2b (smoothing on), A's (2k-1)/12 never reaches 1.0 and B alone shifts, which is correct.",
+   "evidence": "Disassembly 0x4B6F81..0x4B70B6: fraction read at 0x4B6F86; shift at 0x4B7056..0x4B7068 when ucomiss(fraction,1.0) is equal; lerp at 0x4B7072..0x4B70AE; the pitch shift is equivalent. The game's comparison constant is [0xBD1908] = 1.0f. Stalls (s >= 7, fraction 1.0 on both renders) are idempotent after the first shift.",
+   "risks": "Only matters when smoothing (g_featPresent) is off. Siege weapons and towers with TurretBone are affected.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_featPresent",
+     "ctype": "uint8_t",
+     "note": "existing phase-2b flag"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "INT_FLOOR_FADE",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0x4E3F08",
+   "length": 7,
+   "original_hex": "f3 0f 58 02 0f 2f c8",
+   "original_asm": [
+    "0x4E3F08: f3 0f 58 02  addss xmm0, dword ptr [edx]",
+    "0x4E3F0C: 0f 2f c8  comiss xmm1, xmm0"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:STUB_FLOOR_FADE> 90 90",
+   "stub": "STUB_FLOOR_FADE: cmp byte [g_skipB],0 ; je .stock ; push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .stock ; comiss xmm1,xmm0 ; ret ; .stock: addss xmm0,[edx] ; comiss xmm1,xmm0 ; ret. 30 mode and A: stock (floor opacity +0x84 += fade rate +0x88). B: not stepped. Both paths end with the original comiss, so the following jbe sees the original flags.",
+   "resume_address": "0x4E3F0F",
+   "live_after": "EFLAGS (CF/ZF from 'comiss xmm1,xmm0' read by 'jbe' at 0x4E3F0F), XMM0 (opacity), XMM1 = 0.0 (xorps at 0x4E3EE6), EDI (floor entry), EDX (&rate). x87 depth 0.",
+   "branch_into_span_check": "No brute-rel, abs32 or listing hits inside (0x4E3F08,0x4E3F0F). Bytes are identical in delayfix.dat and game820.dat.",
+   "purpose": "Insurance. The W3DFloorDraw death fade (doDrawModule 0x4CEBCA hands FloorFadeRateOnObjectDeath to the floor manager via 0x46AFCA/0x4E5A5B) is integrated per scene render in RenderFloors 0x4E53D3 -> 0x4E3EC5. That runs inside the terrain render object's Render 0x4E28F0 (vtable 0xBE4760 slot +0x30), on both A and B.",
+   "evidence": "0x4E3EC5: if rate +0x88 != 0, opacity +0x84 = clamp01(opacity + rate) per call. Ctor 0x4E4846 sets +0x84 = 1.0 and +0x88 = 0. The only writers of the rate are 0x4E5A98 (W3DFloorDraw path) and xfer. AotR: no INI sets FloorFadeRateOnObjectDeath (0 hits), although W3DFloorDraw appears in 378 files.",
+   "risks": "Not reachable in AotR today (rate is always 0, so the jnp at 0x4E3EFE skips the step). Install only if AotR ever uses FloorFadeRateOnObjectDeath. 4b form: rate/2 on both renders.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t"
+    }
+   ],
+   "verification": "sweep 2026-10-05: confirmed by adversarial verifier"
+  },
+  {
+   "id": "INT_TERRAIN_TILEUPD",
+   "phase": "2a",
+   "group": "render-internal integrators part 3 / UI (effects sweep 4a)",
+   "address": "0xBE4794",
+   "length": 4,
+   "original_hex": "73 0a 4e 00",
+   "original_asm": [
+    "Terrain render object vtable 0xBE4760 (Class_ID 4: slot +0xC = 0xB6EEB8 'push 4; pop eax; ret'; ctor 0x4E3531 (called after new(0x393C) at 0x465EE5 and 0x4914F1), dtor 0x4E3474 (called from scalar deleting dtor 0x4E35F8, vtable slot +4)) slot +0x34 = 0x004E0A73 (On_Frame_Update: terrain tile texture rebuild with a per-call budget)",
+    "0x4E0A73: 51                      push ecx",
+    "0x4E0A74: 80 3d 48 41 de 00 00    cmp byte ptr [0xde4148], 0"
+   ],
+   "kind": "ptr_slot",
+   "replacement_hex": "<abs32:STUB_TERRAIN_OFU>",
+   "stub": "STUB_TERRAIN_OFU. Entered by 'call dword ptr [eax+0x34]' at 0x46FF57 (RTS3DScene::Customized_Render 0x46FE84; the same update-list loop over scene+0x78 as INT_LIGHTPULSE) and by any other virtual On_Frame_Update call on the terrain. thiscall, ECX = terrain object, no stack args, plain ret. Pure asm, no SSE/x87.\n  cmp byte [g_skipB],0 ; je .run\n  push eax ; mov eax,fs:[0x24] ; cmp eax,[g_mainTid] ; pop eax ; jne .run\n  ret                    ; 60-mode B-render: no tile work at all\n.run:\n  jmp 0x004E0A73         ; stock On_Frame_Update, ends 'pop ebx; pop edi; pop ecx; ret'\nIn 30 mode and on A-renders the stub runs the stock function. On a B-render it returns at once.\nThe following state keeps A's values on B:\n- the budget state [this+0x3934]: 0 idle, 1 skip once, 2 camera moved (budget 1), 3 pending (budget 2);\n- the full-rebuild flag [this+0x38C0] (budget 99);\n- every tile texture.\nSo B draws exactly A's terrain textures. The next A-render runs the stock budget with the state stock frame k+1 would see. When the camera moved, W3DView::update on A re-arms state 2 through terrain vt+0x22C(0) at 0x48C6FB; S1 already skips that call on B.",
+   "resume_address": "-",
+   "live_after": "Plain ret back to 0x46FF5A ('mov ebx,[ebx+4]; lea eax,[edi+0x78]; cmp ebx,eax; jne 0x46FF16').\n- Must be preserved: EBX (list node), EDI (scene), ESI, EBP. The stub touches none of them, and 0x4E0A73 saves and restores EBX/EDI/ECX itself.\n- Dead: EAX (overwritten by the lea at 0x46FF5D), ECX, EDX, and EFLAGS (recomputed by cmp ebx,eax).\n- x87 depth is 0 in and out.\n- XMM registers are volatile; the stock path's tile builder uses SSE.",
+   "branch_into_span_check": "n/a (data slot).\n- Whole-image abs32 scan: 0x004E0A73 occurs only at 0xBE4794.\n- Brute rel8/rel32/jcc32 scan of all executable sections: no call, jmp or jcc targets 0x4E0A73.\n- No code or data references the slot address 0xBE4794 itself.\n- The vtable base 0xBE4760 is referenced only by the vptr stores at 0x4E3556 (ctor 0x4E3531) and 0x4E3485 (dtor 0x4E3474).\n- The class is most-derived: new(0x393C) is followed directly by the ctor, and no other vtable holds 0x4E0A73.\n- The slot bytes '73 0a 4e 00' and the function head '51 80 3d 48 41 de 00 00 57 8b f9' are identical in rotwk\\game.dat, aotr\\zGameDats\\delayfix.dat and rotwk\\game820.dat.\n- No overlap with sites.json spans or AotR hooks.",
+   "purpose": "Make the terrain tile-texture rebuild budget A-only.\n\nToday every B-render runs the terrain On_Frame_Update. Whenever tiles are pending, it rebuilds up to 2 more 512x512 terrain tile textures on the CPU. Per 33 ms pair that is 3 rebuilds while panning (stock: 1) and 4 while settling (stock: 2). All of the extra work lands on the B-render, which is supposed to be the cheap copy.\n\nThis is the render-side cause of 'it stutters for a bit when panning the camera fast'. The fix restores the stock cadence per pair and makes B cheap again, so the pacer can absorb the A-render cost by catching up on B.",
+   "evidence": "Scene loop and registration:\n- The loop 0x46FF16..0x46FF62 calls vt+0x34 for every object on scene+0x78.\n- The terrain (Class_ID 4) is on that list: at 0x465F2C it is registered with scene->vt+0x38(terrain, 0) after scene->vt+0x08 (Add_Render_Object).\n- For Class_ID 4 the call is skipped only when byte [[0xDE4690]+0x1914] is set. Only the script and debug setters 0x7BB316 and 0x7BCE53 write it; it is 0 in normal play.\n- So On_Frame_Update runs once per scene render, on A and on B.\n\nState machine of 0x4E0A73:\n- state = [edi+0x3934].\n- 1: state becomes 3, no work.\n- 2: budget 1, state becomes 3.\n- 3: budget 2.\n- If [edi+0x38C0] is set: budget 0x63.\n- It loops over the tile grid [+0x3888] ([+0x3890] x [+0x3894] tiles, 0xD4 bytes each). For each tile it calls 0x511F6B, and decrements the budget when that call returns 1 (a texture was built).\n- 0x63F3BF (a bare ret) and 0x51577F (an EH-prolog no-op) do no work.\n- If budget is left over, state becomes 0 (0x4E0B41).\n\nSetter and callers:\n- vt+0x22C = 0x4E0C95 sets state = arg ? 1 : 2.\n- W3DView::update calls it at 0x48C6FB with push 0, only after setCameraTransform with [ebp-0xE] set.\n- The W3DView vtable function 0x48C774 (slot 0xBDD4EC) calls it at 0x48CA6B.\n- Both callers are A-only in 60 mode.\n\nTile builder 0x511F6B:\n- It releases the textures of tiles not flagged visible.\n- For a visible tile without a texture it calls 0x4AE3CD(x, y, cells=[tile+0x58], 32 texels/cell, fmt 0x19, 0) and returns 1.\n- 0x4AE3CD creates a power-of-two texture (0x4EF2C3) and fills it on the CPU: a per-cell blend (0x4AE772) into A1R5G5B5 per texel, then D3DX9_27 D3DXFilterTexture for the mip chain (0x4EEC82).\n- A second texture [tile+0x40] is built the same way when GD+0x49 is set (0x512037..0x5120A3).\n- Tiles are 16 cells (0x4E1520 steps by 0x10), so a build is 512x512 at full texture quality. DAT_00DD1E4C values 0, 1, 2+ give 32, 16, 8 texels per cell.\n\nRendering:\n- The tile render 0x5151B7 falls back to a low-res texture [+0x34] until [+0x38] exists.\n- The terrain Render 0x4E28F0 and the tile render path 0x4E16A1, 0x4E1520 and 0x5151B7 keep only one-shot dirty flags ([+0x62] geometry rebuild), so they need no gate.",
+   "risks": "Render-side texture cache only, so there is no logic, save or determinism effect.\n\nWith the site, tiles become sharp at exactly the stock rate per pair: 1 per 33 ms while panning, 2 while settling, and a full refresh on A. Never faster or slower than stock 30 FPS.\n\nThe A-render still carries the stock cost of up to 1-2 builds. If a single build takes longer than about 16 ms on the test PC, A still overruns. B is now cheap, though, so the deadline pacer catches up within the pair.\n\nA finer split (1 build on A, 1 on B while settling) is possible by redirecting the immediate at 0x4E0AAB. It is not exact while panning, so it is not recommended.\n\nNot measured at runtime: the cost of a 512x512 CPU blend plus mip build per tile is inferred from the code.",
+   "dll_vars": [
+    {
+     "name": "g_skipB",
+     "ctype": "uint8_t",
+     "value_30": "0",
+     "value_60_A": "0",
+     "value_60_B": "1",
+     "note": "existing global (1 only during a 60-mode B-render clientUpdate)"
+    },
+    {
+     "name": "g_mainTid",
+     "ctype": "uint32_t",
+     "note": "existing global"
+    }
+   ],
+   "verification": "sweep 2026-10-05: needs_changes by adversarial verifier"
   }
  ],
  "coverage": [
@@ -5253,6 +5821,7 @@
   "other A-only gates": "The group is fully specified: three phase-2a sites, one optional telemetry site, and coverage of all 53 calls in InGameUI::update. I wrote no files.\n\n1. Gate condition differs from the PLAN wording. PLAN and G7 say to skip when `g_m60 && !g_uiTick`. But g_uiTick stays 0 for the whole Y iteration, including the stock logic step that follows the B-render. A callee-side gate keyed only on g_uiTick would therefore also skip a call that comes from logic. All three stubs instead skip only when all of these hold: g_m60, !g_uiTick, g_inClientUpdate, and the current thread (fs:[0x24]) is g_mainTid. That is the same as g_inB on the main thread. C0 must maintain g_inClientUpdate and g_mainTid in every mode, as PLAN §1.3 already says. A shared `B_RENDER_NOW` predicate or a precomputed g_skipA byte is fine, as long as all callee gates and isTick use the same definition.\n\n2. In phase 2a all three gates are redundant safety nets. Their parents are already A-only: InGameUI::update at 0x6488A6, LW view vt6C at 0x6484D7, and vt188 has no caller. So the expected per-tick skip counts for GATE_PALANTIR, GATE_LWM and GATE_DISPLAY_VT188 are 0, and the telemetry report should treat skip > 0 as a warning that an unexpected B-render path exists (behaviour still correct). The run counts must equal the stock baseline per tick.\n\n3. AotR's per-render hook 0x6D57AF stays inside the gated path, confirmed:\n   - 0x6D57AF (e9 4c b3 7f 00) is inside 0x6D577C, which has exactly one caller: 0x6D7728 inside AptPalantir::update 0x6D7647.\n   - 0x6D7647 is entered only by jmp 0x6D7B36, i.e. through thunk 0x6D7B33.\n   - 0x6D7B33 is reached only through jmp 0x5039C1 (W3DAptPalantir vt+0x28, slot 0xBE5770) and through base vtable slot 0xC18E58. That base vtable is live only inside the base ctor 0x6D73C2 and base dtor 0x6D45A6, and neither makes a +0x28 call.\n   - The only vt+0x28 calls on [0xDE4A70] are 0x6A23DF (InGameUI::update) and 0x61226F (LWM::update, unconditional at the end of that function).\n   - LWM::update 0x6121C5 is called only at 0x6C0E7A (through 0x49AAD4) and 0x444CDC (vt188). The raw E8/E9 scan covers the AotR sections too.\n   - The AotR code returns at 0xED098E to 0x6D57B4. Every route to the sampler at 0xED0800 therefore passes GATE_PALANTIR, so [0xED0000] advances 30.3 times/s in 60 mode, as in stock.\n\n4. InGameUI::update has a single caller, confirmed. It spans 0x6A1F4D..0x6A24D1 (ends with RET, no outbound jumps).\n   - Its only entry is jmp 0x48EA1F, which is referenced only by vtable slot 0xBDD9D8.\n   - W3DInGameUI is a single instance: ctor 0x48E889 is called only from factory 0x44BD28.\n   - The only `[0xDE4830]->vt28` call is at 0x6488AE (decompile line 467986).\n   - The W3DInGameUI draw function 0x48EA29, which runs on every render, calls vt+0x150 and vt+0x1E0, never update.\n   - TEL_IGUI_THUNK is an optional runtime check of this. It can be dropped.\n\n5. Display vt+0x188 (0x444CD4) has no static caller.\n   - All 32 `[reg+0x188]` call sites have receivers that are not the display.\n   - The 544 refs to 0xDE4418 contain no such call, and no W3DDisplay vtable method makes one.\n   - Ghidra merges 0x444CD4 into FUN_00444B34, so `ghq callers` returns nothing for it. This is a tooling artefact.\n   - I added one extra beyond the PLAN: a call in 60 mode on the main thread outside clientUpdate sets g_unknownPath, and the controller falls back to 30 at the next pair boundary. Such a path could double the logic-RNG use of the eye tower.\n   - Interplay with C7: the 0x444CF2 particle tail stays its own C7 site and is reached only on the run path here. The spans do not overlap.\n\n6. Bytes of all four spans are identical in rotwk/game.dat (sha cc08275d…), delayfix.dat (035da15c…) and game820.dat. None of them overlaps an AotR hook or the C7 span.\n\n7. Stubs reach their stock targets with `jmp dword ptr [k_…]` (constants 0x6D7B33, 0x6C0E4D, 0x444CDA and 0x6A1F4D). All caves live in the DLL. The only scratch registers used are EAX and EDX, which are dead at every entry. ECX and the stack are preserved on every stock path.\n\n8. Open question for phase 6: once the LW camera part of 0x49AAB8 runs on B, the code after 0x49AAD9 (fade, angle inertia, zoom velocity 0x49AB21/0x49AB3E) must be audited for reads of state that 0x6C0E4D produces.",
   "CU_ALLOWLIST (clientUpdate 0x632409 gates)": "1. clientUpdate is 0x632409..0x63252E (ends 'leave; ret' at 0x63252D/0x63252E). It has 19 call instructions, and every one is classified in the coverage list (5 gate, 13 run, 1 helper). The full body 0x632409..0x63252F is byte-identical in rotwk\\game.dat, aotr\\zGameDats\\delayfix.dat and rotwk\\game820.dat. The analysed copy of game.dat has the same SHA-256 as rotwk\\game.dat (cc08275d...705dc). No AotR hook lies in or near this range; the nearest is 0x629D11.\n\n2. Span choice differs from the PLAN wording for APT ('0x632443/0x632449') and the keyboard drain ('0x6324B4..0x6324BC'). I used the 5-byte '8b 01 ff 50 28' spans at 0x632449 and 0x6324BA. That keeps all four vt28 gates on one GateVt28 template and leaves the harmless 'mov ecx,[global]' loads in place. The 11-byte alternatives are also clean:\n   - 0x632443: 'e8 <rel32> 90x6'. Its start is the je target from 0x632431, which is allowed. Its only raw hit, 0xA2CAD9 -> 0x632444, is a false positive inside 'c6 44 24 63 00'.\n   - 0x6324B4: 'e8 <rel32> 90x6', the same as G3's DrainStub.\n\n3. Gate condition is 'run iff g_m60==0 || g_uiTick!=0'. This matches the G2 stub convention. It is redundant with the PLAN invariant that g_uiTick==1 in 30 mode, but it makes the 30-mode path independent of g_uiTick bookkeeping.\n\n4. All stubs are pure asm and touch no x87 or XMM state. EFLAGS are dead at all five resume addresses, so per-site telemetry 'inc' counters need no pushfd. Each vt28 call is a tail call (jmp [eax+0x28]), so callees see the same ESP, ECX and return address as stock. Plain-RET/no-stack-arg forms were verified for 0x62B385 (0x62B920), 0x624EE1 (via 0x624C68, ret at 0x624EE0), 0x6D8E2B (0x6D8EBD), 0x4985CB (via 0x63F667 and 0x63F4E2, ret at 0x63F587) and 0x461DA6 (0x461FF0). The four gate stubs can share one body if telemetry is keyed by [esp] (return address); otherwise use per-site copies. Phase 1 can install the same stubs, because g_m60=0 forces the stock path and the counters record the call counts.\n\n5. Threads: the only caller of clientUpdate is C0 0x6325CF ('call [eax+0x9C]' in GameEngine::update 0x6325A0). Pointers to 0x632409 exist only at vtbl slots 0xBD857C (Win32GameEngine vtbl 0xBD84E0, which also holds 0x44181A/0x44181F) and 0xBFE2FC (GameEngine vtbl 0xBFE260). None of the 72 'call [reg+0x9C]' sites is in a function that references TheGameEngine, and G9 confirms the display worker thread never reaches 0x632409. So these stubs need no main-thread check.\n\n6. Policy conflict resolved in favour of PLAN: G1 CU-01 classified 0x62B385 as run-on-B; PLAN 1.4 (and CRITIC K11) make it A-only at both call sites.\n   - The second site 0x648817 ('8b 0d 2c 41 de 00 / e8 69 2b fe ff'; resume 0x64881C 'mov eax,[0xDE412C]', so AL is dead) belongs to the GameClient::update group and can reuse Gate_62B385.\n   - Suggestion for the mode controller (not part of this group): also require GL+0x9C==0 and GL+0xA8==0, so the blocking post-load fade-in inside 0x62B385 always runs in 30 mode and does not count toward pacer debt or fallback statistics. Exactness does not depend on this.\n\n7. Radar replacement: the EH try-state store [ebp-4]=0 now runs before the vptr load. This only matters if TheRadar is invalid, when stock faults too.\n\n8. Audio replacement: the [0xDE4330]=ESI store must stay on both paths, because the input-lock toggle at 0x6324BF..0x6324EE compares against it on every render.\n\n9. Telemetry caveat: the keyboard drain gate is conditional (0x80000F()&1), so per-tick invariants must compare its count against the stock baseline rather than expect 30.3/s.\n\n10. Process note: one rg command in this session briefly redirected output to a temp file outside the project, and I deleted it right away. No other file was created or modified; everything else was read-only.",
   "GameClient::update allow-list gates (0x64849E)": "I produced 23 gate sites; their bytes are verified with pefile + capstone. Spans are on instruction boundaries, and the 57 coverage entries list every call instruction in GameClient::update 0x64849E..0x6488D7.\n\n1. NEW ISSUE: the drawable block is not A-only by itself. PLAN 1.4 says it is.\n   - The block decision is skip = freeze || [0xD9F6F8]==m_frame (0x648701..0x648712).\n   - freeze includes the W3DView freeze byte +0x23D0 (vtD8 0x48B5D3) and vt78. 0x489817 and 0x48A417 clear +0x23D0. Both are reached through 0x48A953, which W3DView::update 0x48BCF2 calls at 0x48C09A. That is inside the A-render's draw (0x648869), after the block decision.\n   - Unpause in A-only code that runs after the block (propagate, InGameUI) has the same effect.\n   - So when a freeze-time camera move ends, or an unpause happens late, the B-render sees freeze=0 with [0xD9F6F8]!=m_frame. It then runs updateDrawable, AnimSound and 0x64594B at an m_frame that stock skipped.\n   - G4-15 shows this path can append MSG 0x3ED (logic-facing), so this is a determinism risk, not only a visual one.\n   - I added GATE_GC_DRAWBLK: a 5-byte jmp_detour at 0x648705. On B it loads EAX=m_frame, which forces skip=1. In 30 mode and on A-renders it is byte-identical in effect.\n   - PLAN 1.4's \"Already A-only by itself\" should be amended.\n\n2. Byte patterns:\n   - Plain `8b 01 ff 50 28`: CLOUD 0x64859E, FIRE 0x6485BC, ANIM2D 0x6485C7, SKEVA 0x6485EC, EVA 0x6485F7, TERRAIN 0x648833, DISPUPD 0x64883E, DSM 0x648872, SHELL 0x648891, INTRO 0x6488CE.\n   - vt6C form: LWVIEW 0x6484D7 (`8b 01 ff 50 6c`).\n   - Direct `e8` calls: LOOKAT, LWXLAT, GESTURE, LWUI, POPUPS, PENDGAME2, DISPUPD_LW. The stubs re-encode the target as `jmp dword ptr [g_tgt_*]` so every register is identical at callee entry.\n   - 8-byte selectors `8b 0d imm32 85 c9`: KBD and MOUSE. Verified that `74 10` at 0x6485D4 goes to 0x6485E6 and at 0x648604 goes to 0x648616, skipping both the update and the createStreamMessages call.\n   - 11-byte `8b 0d imm32 8b 01 ff 50 28`: WM 0x64863A and IGUI 0x6488A6.\n   - `a1` load: DRAWBLK.\n   - All gated callees take no stack arguments; each ends in a plain `ret`, or tail-jumps to a function that does.\n\n3. Branch-into-span check, three methods:\n   - rg of listing.asm for every interior address as an operand, with a positive control. Result: 0 hits.\n   - Raw little-endian dword scan of the whole image. Result: 0 hits.\n   - Brute-force rel8/rel32/jcc32 decode at every byte offset of all executable sections. Result: one false positive, the 0x64880A ModRM byte of `ff 70 40`.\n   - Branch targets that land on span starts or ends (allowed): 0x6484E7, 0x6485A3, 0x6485C1, 0x648616, 0x648850, 0x648891, 0x6488A6, 0x6488D3.\n   - No AotR hook overlaps.\n   - The whole function is byte-identical (md5 b7f0df87...) in rotwk\\game.dat, aotr\\zGameDats\\game.dat, delayfix.dat and game820.dat.\n\n4. Gate predicate: SKIP = g_m60 && !g_uiTick, testing both bytes.\n   - This relies on g_uiTick==1 whenever g_m60==0 (reset hook and controller).\n   - GameClient::update is reached only via vt28 (slot 0xBDA708 → 0x44BFEB jmp) from clientUpdate 0x632498 on the main thread. EAX is not read after it returns.\n   - Optional phase-1 telemetry: per-site inc counters. In the selectors they must come before the final `test ecx,ecx`.\n\n5. Superseded G1/G3 proposals:\n   - LookAt, LW translator and the IGUI camera block \"run on B with halved steps\": the PLAN makes them A-only, so they are whole-call gates here.\n   - 0x62B385 \"run on B\": the PLAN makes it A-only.\n\n6. Defensive sites:\n   - 0x64884B is the GL+0x125 path, which per PLAN 1.8 is the LW strategic map, not loading. It is unreachable at 60 until phase 6.\n   - GATE_GC_DISPUPD_INTRO is optional. If dropped, classify 0x6488D0 as run.\n   - WM could equally use the 5-byte span 0x648640. I followed the task's 0x64863A.\n\n7. Read-only violation: my first branch-scan command wrote a temp file. I deleted it right away. No other file was created or modified.",
-  "render-internal integrators part 2": "USER REPORT (still 30 fps in windowed skirmish): this spec does not explain or fix that. These sites only change what B-renders do, so they cannot raise the frame rate. A steady 30 fps points to 60 mode never engaging (g_m60 / mode controller / C0 and Halt hooks). Check that before installing this group.\n\nSCOPE: group 'render-internal integrators part 2', effects 1-7 from the sites.json todo. 14 entries: 13 phase-2a sites plus 1 phase-4b-only site (INT_LIGHT_PULSE_LTR). Still open in the todo: outline fade, LightPulse, instance fade, overlay fade, subtitles, UI particles and world-anim rise.\n\nVERIFICATION:\n- Spans: every span was checked with pefile+capstone in a copy of game.dat. Bytes are identical in delayfix.dat and game820.dat. Start, end and resume/B-exit addresses are listing.asm instruction starts.\n- Branch-into checks used three methods: the listing.asm operand scan, a whole-image absolute-dword scan, and a brute rel8/rel32/jcc32 decode of every executable section (AotR sections included). There were 3 hits, all mid-instruction false positives: 0x4CA548 (INT_ROPE), 0x56EFEB (INT_TREAD pointer) and 0x4B1554 (INT_DEBRIS).\n- No overlap with the 88 existing sites.json spans or IDs, and no AotR hook in 0x4B0000..0x4D1000 (G7).\n- All caves use the part-1 gate: g_skipB, then the fs:[0x24] == g_mainTid check, with a pure original-instruction 30-mode path. Operand vars are initialised in DllMain from game memory.\n- Data: 0xD9A3A0 and 0xD9F608 have no writers and no data pointers.\n\n(7) SUBOBJECT FADE IS PER DRAW, NOT PER m_frame: 0x8B8F40 -> 0x672823 -> interface vt+0x88 0x4C3B25 stores the fade entry and sets dirty module+0x1C9. W3DModelDraw::doDrawModule (0x4C78B4) then calls vt+0x74 0x4BA74F on every draw while dirty. That calls 0x4B31C9, which steps the delay (0x4B3244) and alpha (0x4B3266) and re-arms dirty (0x4B3258, and 0x4B30E4 while 0 < alpha < 1). Hence two sites.\n\nDEVIATIONS FROM PLAN 1.5 / SYNTHESIS:\n1. Light flicker: 0x4CF2BF -> numerator 0x4CF2C3, because an int LTR cannot give a zero step. In 4b the 0.5f numerator equals 'LTR -> 10'.\n2. Light pulse: 0x4CF3D3 is only the reload, not a per-draw step. The real steps are 0x4CF413 and 0x4CF425, and the reload calls CRT rand(). 2a holds the whole pulse block with a detour at 0x4CF3C9; 0x4CF3D3 becomes the 4b form.\n3. Rope: 0x4CA59E -> block start 0x4CA599 (skip all three integrators).\n4. Tank: 0x4CDDCB -> 0x4CDE8B (only the scroll loop). The pivot path is A-only by construction and needs the full rate in 4b.\n5. Truck: 0x4CC4B9 -> 0x4CC4B3, because EFLAGS are live across 0x4CC4B9. Cab (0x4CC1F5) and trailer (0x4CC313) damping sites are added.\n6. Wake: threshold operand 0x4D0593 added, so B cannot snap early.\n7. Debris: the integrator is inc [esi+0x3C] at 0x4B155C.\n8. Subobject fade: 0x8B8F40 needs no site. Do not redirect 0x8B8F8C/0x8B8FBC as well.\n\nAOTR USAGE (data/ini scan):\n- W3DLightDraw: 21 files.\n- W3DTruckDraw: 55 files, with tire bones but no CabBone or TrailerBone, so the cab and trailer sites are insurance.\n- W3DTankDraw: 5 files, none setting TreadAnimationRate.\n- W3DBoatWakeModelDraw: 1 file.\n- W3DDebrisDraw: 1 file.\n- W3DRopeDraw: 0 files (insurance).\n- SubObjectsUpgrade: about 700 files.\n\nKNOWN NON-EXACT DETAILS (visual only):\n- The rope draws before it steps, so B shows A's new state one 60 Hz frame early.\n- Debris state transitions can occur on B with A's counter (a picture-exact alternative is in the INT_DEBRIS risks).\n- A light first drawn on a B-render shows pulse 0 for one frame.\n\nPHASE 4b SUMMARY:\n- Exact by var values only: INT_LIGHT_PHASE (0.5f) and INT_WAKE_* (0.0025f).\n- Exact cave forms using g_halfF = 0.5f on A and B, given in each stub: INT_TREAD scroll, INT_TRUCK_WHEEL, INT_SUBOBJ_DELAY and INT_SUBOBJ_ALPHA.\n- Pulse: remove INT_LIGHT_PULSE and install INT_LIGHT_PULSE_LTR (int 10). It is exact when frac(5/rate) is 0 or > 0.5.\n- No exact form, stays A-only: rope (second-order drop), truck cab and trailer (multiplicative damping), debris (int counter).\n\nHOUSEKEEPING: one scratch output file was created by mistake during analysis and then deleted. No other files were created or modified.\n\nThe user's report (\"still 30 fps\" in skirmish) is expected with the build that is installed now. %APPDATA%\\Age of the Ring\\aotr60\\aotr60.log says 'AotR60 0.1 (phase 0: passthrough) ... known build; 60 FPS patches arrive in phase 2 - running stock 30 FPS'. None of the sites below changes that; they are visual-only phase-2a/4b integrator specs.\n\nGROUP: render-internal integrators part 2, covering the 7 requested effects in 11 sites (10 in phase 2a, 1 in phase 4b). Not covered here, and still open in the sites.json todo: light flicker (row 30), rope/treads/truck, boat wake and debris (row 31), subobject fade 0x8B8F40.\n\nVERIFICATION\n- All spans were checked in a copy of game.dat with pefile and capstone. They start and end on instruction boundaries, and the bytes are identical in delayfix.dat and game820.dat.\n- Branch-into checks used three methods:\n  - listing.asm operand scan: 0 hits;\n  - whole-image abs32 scan: only 11 mid-instruction false positives on 0x6A53FF;\n  - brute rel8/rel32/jcc32 decode of all executable sections: 0 hits (the scan was sanity-checked on known jump targets).\n- No overlap with the 88 existing sites.json spans (16-byte margin) or with any AotR hook.\n- B-gate predicate: g_skipB plus the fs:[0x24]==g_mainTid check, as in part 1.\n- The operand-redirect vars g_outlineStep and g_instFadeStep must be initialised in DllMain from 0xBDC1FC and 0xBD88C8, and switched by C0 at the same two points as g_skipB.\n\nDESIGN DECISIONS AND DEVIATIONS FROM PLAN 1.5 / G2\n1. LightPulse. Phase 2a gates W3DDynamicLight::On_Frame_Update through its only reference, the vtable slot 0xBDC00C (ptr_slot), so B redraws A's light exactly. Doubling the counters at creation (0x46D7A9, the PLAN table row) becomes the optional 4b site INT_LIGHTPULSE_DBL. It is exact only within one uninterrupted 60-mode run and must be enabled together with g_lp4b.\n2. Overlay fade. G2-D12's call-site skip would hide the overlay on every B-render. The replacement is a function-entry detour at 0x65CF05 with a draw-only B path that re-enters the stock tail at 0x65CFAB. It also covers the third caller 0x4476EC (W3DDisplay vt+0x18C), which G2 missed.\n3. Subtitles. G2-D13's skip at 0x44A203 would blank subtitles on B. The replacement is two call gates inside 0x66045B:\n   - 0x66045E: state machine 0x65FFCA. It is a NEW integrator: box alpha +-18 per call and a hold countdown of -33 ms per call. On B the stub returns A's visibility from the state.\n   - 0x660469: line scroller 0x6603BA, skipped on B.\n   The draws 0x65FB20/0x65F9D8 run every render. +0x44 is a pixel scroll offset. There is no exact 4b form.\n4. UI particles. A jmp detour over the whole 60-byte block. EFLAGS are re-created by re-executing 'test byte [esi+0x10],1', so no pushfd is needed. The cave is 4b-ready through g_uiPart4b: p += v/2 on every render, v *= d on B.\n5. World-anim rise. The cave skips the add on B, so there is no division by zero. 4b doubles the live LTR (cvtsi2ss + addss) instead of using G2's DLL int copy.\n6. Phase 4b exactness. Float32 simulation shows the instance fade with 1/24 steps is not bit-identical at pair ends: the clamp can move one pair, because 12*(1/12) rounds below 1. This corrects G2-D11. The outline fade crosses in the same pair. Both are visual only.\n\nOBSERVATIONS (not specified as sites)\n- Display vt+0x190 0x445FA5 is called at 0x44A1FD, right before the subtitle draw. It deletes the finished subtitle object at display+0x188 (state 1, empty queue). In 60 mode this can happen on the B-render, before the logic step instead of after it. The effect is display-only. If strict 'B mutates nothing' is wanted: call gate at 0x44A1FD (ff 90 90 01 00 00 -> e8 <stub> 90; B: ret, else jmp [eax+0x190]).\n- UI particles with GD+0xDB0 draw from the client RNG 0x6D343B on every render, so B consumes extra client-RNG values. This is client-only, not the logic RNG."
+  "render-internal integrators part 2": "USER REPORT (still 30 fps in windowed skirmish): this spec does not explain or fix that. These sites only change what B-renders do, so they cannot raise the frame rate. A steady 30 fps points to 60 mode never engaging (g_m60 / mode controller / C0 and Halt hooks). Check that before installing this group.\n\nSCOPE: group 'render-internal integrators part 2', effects 1-7 from the sites.json todo. 14 entries: 13 phase-2a sites plus 1 phase-4b-only site (INT_LIGHT_PULSE_LTR). Still open in the todo: outline fade, LightPulse, instance fade, overlay fade, subtitles, UI particles and world-anim rise.\n\nVERIFICATION:\n- Spans: every span was checked with pefile+capstone in a copy of game.dat. Bytes are identical in delayfix.dat and game820.dat. Start, end and resume/B-exit addresses are listing.asm instruction starts.\n- Branch-into checks used three methods: the listing.asm operand scan, a whole-image absolute-dword scan, and a brute rel8/rel32/jcc32 decode of every executable section (AotR sections included). There were 3 hits, all mid-instruction false positives: 0x4CA548 (INT_ROPE), 0x56EFEB (INT_TREAD pointer) and 0x4B1554 (INT_DEBRIS).\n- No overlap with the 88 existing sites.json spans or IDs, and no AotR hook in 0x4B0000..0x4D1000 (G7).\n- All caves use the part-1 gate: g_skipB, then the fs:[0x24] == g_mainTid check, with a pure original-instruction 30-mode path. Operand vars are initialised in DllMain from game memory.\n- Data: 0xD9A3A0 and 0xD9F608 have no writers and no data pointers.\n\n(7) SUBOBJECT FADE IS PER DRAW, NOT PER m_frame: 0x8B8F40 -> 0x672823 -> interface vt+0x88 0x4C3B25 stores the fade entry and sets dirty module+0x1C9. W3DModelDraw::doDrawModule (0x4C78B4) then calls vt+0x74 0x4BA74F on every draw while dirty. That calls 0x4B31C9, which steps the delay (0x4B3244) and alpha (0x4B3266) and re-arms dirty (0x4B3258, and 0x4B30E4 while 0 < alpha < 1). Hence two sites.\n\nDEVIATIONS FROM PLAN 1.5 / SYNTHESIS:\n1. Light flicker: 0x4CF2BF -> numerator 0x4CF2C3, because an int LTR cannot give a zero step. In 4b the 0.5f numerator equals 'LTR -> 10'.\n2. Light pulse: 0x4CF3D3 is only the reload, not a per-draw step. The real steps are 0x4CF413 and 0x4CF425, and the reload calls CRT rand(). 2a holds the whole pulse block with a detour at 0x4CF3C9; 0x4CF3D3 becomes the 4b form.\n3. Rope: 0x4CA59E -> block start 0x4CA599 (skip all three integrators).\n4. Tank: 0x4CDDCB -> 0x4CDE8B (only the scroll loop). The pivot path is A-only by construction and needs the full rate in 4b.\n5. Truck: 0x4CC4B9 -> 0x4CC4B3, because EFLAGS are live across 0x4CC4B9. Cab (0x4CC1F5) and trailer (0x4CC313) damping sites are added.\n6. Wake: threshold operand 0x4D0593 added, so B cannot snap early.\n7. Debris: the integrator is inc [esi+0x3C] at 0x4B155C.\n8. Subobject fade: 0x8B8F40 needs no site. Do not redirect 0x8B8F8C/0x8B8FBC as well.\n\nAOTR USAGE (data/ini scan):\n- W3DLightDraw: 21 files.\n- W3DTruckDraw: 55 files, with tire bones but no CabBone or TrailerBone, so the cab and trailer sites are insurance.\n- W3DTankDraw: 5 files, none setting TreadAnimationRate.\n- W3DBoatWakeModelDraw: 1 file.\n- W3DDebrisDraw: 1 file.\n- W3DRopeDraw: 0 files (insurance).\n- SubObjectsUpgrade: about 700 files.\n\nKNOWN NON-EXACT DETAILS (visual only):\n- The rope draws before it steps, so B shows A's new state one 60 Hz frame early.\n- Debris state transitions can occur on B with A's counter (a picture-exact alternative is in the INT_DEBRIS risks).\n- A light first drawn on a B-render shows pulse 0 for one frame.\n\nPHASE 4b SUMMARY:\n- Exact by var values only: INT_LIGHT_PHASE (0.5f) and INT_WAKE_* (0.0025f).\n- Exact cave forms using g_halfF = 0.5f on A and B, given in each stub: INT_TREAD scroll, INT_TRUCK_WHEEL, INT_SUBOBJ_DELAY and INT_SUBOBJ_ALPHA.\n- Pulse: remove INT_LIGHT_PULSE and install INT_LIGHT_PULSE_LTR (int 10). It is exact when frac(5/rate) is 0 or > 0.5.\n- No exact form, stays A-only: rope (second-order drop), truck cab and trailer (multiplicative damping), debris (int counter).\n\nHOUSEKEEPING: one scratch output file was created by mistake during analysis and then deleted. No other files were created or modified.\n\nThe user's report (\"still 30 fps\" in skirmish) is expected with the build that is installed now. %APPDATA%\\Age of the Ring\\aotr60\\aotr60.log says 'AotR60 0.1 (phase 0: passthrough) ... known build; 60 FPS patches arrive in phase 2 - running stock 30 FPS'. None of the sites below changes that; they are visual-only phase-2a/4b integrator specs.\n\nGROUP: render-internal integrators part 2, covering the 7 requested effects in 11 sites (10 in phase 2a, 1 in phase 4b). Not covered here, and still open in the sites.json todo: light flicker (row 30), rope/treads/truck, boat wake and debris (row 31), subobject fade 0x8B8F40.\n\nVERIFICATION\n- All spans were checked in a copy of game.dat with pefile and capstone. They start and end on instruction boundaries, and the bytes are identical in delayfix.dat and game820.dat.\n- Branch-into checks used three methods:\n  - listing.asm operand scan: 0 hits;\n  - whole-image abs32 scan: only 11 mid-instruction false positives on 0x6A53FF;\n  - brute rel8/rel32/jcc32 decode of all executable sections: 0 hits (the scan was sanity-checked on known jump targets).\n- No overlap with the 88 existing sites.json spans (16-byte margin) or with any AotR hook.\n- B-gate predicate: g_skipB plus the fs:[0x24]==g_mainTid check, as in part 1.\n- The operand-redirect vars g_outlineStep and g_instFadeStep must be initialised in DllMain from 0xBDC1FC and 0xBD88C8, and switched by C0 at the same two points as g_skipB.\n\nDESIGN DECISIONS AND DEVIATIONS FROM PLAN 1.5 / G2\n1. LightPulse. Phase 2a gates W3DDynamicLight::On_Frame_Update through its only reference, the vtable slot 0xBDC00C (ptr_slot), so B redraws A's light exactly. Doubling the counters at creation (0x46D7A9, the PLAN table row) becomes the optional 4b site INT_LIGHTPULSE_DBL. It is exact only within one uninterrupted 60-mode run and must be enabled together with g_lp4b.\n2. Overlay fade. G2-D12's call-site skip would hide the overlay on every B-render. The replacement is a function-entry detour at 0x65CF05 with a draw-only B path that re-enters the stock tail at 0x65CFAB. It also covers the third caller 0x4476EC (W3DDisplay vt+0x18C), which G2 missed.\n3. Subtitles. G2-D13's skip at 0x44A203 would blank subtitles on B. The replacement is two call gates inside 0x66045B:\n   - 0x66045E: state machine 0x65FFCA. It is a NEW integrator: box alpha +-18 per call and a hold countdown of -33 ms per call. On B the stub returns A's visibility from the state.\n   - 0x660469: line scroller 0x6603BA, skipped on B.\n   The draws 0x65FB20/0x65F9D8 run every render. +0x44 is a pixel scroll offset. There is no exact 4b form.\n4. UI particles. A jmp detour over the whole 60-byte block. EFLAGS are re-created by re-executing 'test byte [esi+0x10],1', so no pushfd is needed. The cave is 4b-ready through g_uiPart4b: p += v/2 on every render, v *= d on B.\n5. World-anim rise. The cave skips the add on B, so there is no division by zero. 4b doubles the live LTR (cvtsi2ss + addss) instead of using G2's DLL int copy.\n6. Phase 4b exactness. Float32 simulation shows the instance fade with 1/24 steps is not bit-identical at pair ends: the clamp can move one pair, because 12*(1/12) rounds below 1. This corrects G2-D11. The outline fade crosses in the same pair. Both are visual only.\n\nOBSERVATIONS (not specified as sites)\n- Display vt+0x190 0x445FA5 is called at 0x44A1FD, right before the subtitle draw. It deletes the finished subtitle object at display+0x188 (state 1, empty queue). In 60 mode this can happen on the B-render, before the logic step instead of after it. The effect is display-only. If strict 'B mutates nothing' is wanted: call gate at 0x44A1FD (ff 90 90 01 00 00 -> e8 <stub> 90; B: ret, else jmp [eax+0x190]).\n- UI particles with GD+0xDB0 draw from the client RNG 0x6D343B on every render, so B consumes extra client-RNG values. This is client-only, not the logic RNG.",
+  "render-internal integrators part 3 / UI (effects sweep 4a)": "Effects sweep after the first 60 FPS play test (user reports: buildings look built twice as fast, upgrade icons shimmer, stutter when panning fast). Construction itself is stock (logic-driven, verified). Fixed here: command-button progress clock one-shot request consumed by every draw (UI_PBCLOCK_*: B keeps it); animation FXEvents/LuaEvents/ModelConditionState FX evaluated once per pair on the B-render with stock render k's (prev,cur] window (INT_FXEV_GATE skips A, INT_FXEV_PREV keeps prev on B); AttachedModel (stuck arrows) lifetime; rider/passenger heading slew; laser texture cell; sail slew; turret history shift in 2a; floor fade (insurance); mouse tooltip linger; duplicate radar refresh (perf); terrain tile-texture rebuild budget A-only (INT_TERRAIN_TILEUPD: B-renders rebuilt extra 512x512 tiles after fast pans). Not installed: client-RNG replay for heat-haze/lightning flicker (needs rework; low visibility)."
  }
 }

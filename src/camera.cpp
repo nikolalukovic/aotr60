@@ -97,6 +97,33 @@ void OpenWindow(volatile uint8_t& flag)
     flag = 1;
 }
 
+// True when a CameraShakerSystem shaker reaches the eye of transform xf - the same test the engine applies in
+// Compute_Rotations 0x4652D7 (|eye - pos|^2 <= radius^2). 0x4655DD only says "the shaker list is not empty", which
+// is true during any battle with impacts anywhere on the map. List at [0xDC78D4]: head node sys+4, first node
+// [sys+8], next [node+4], shaker [node+0xC]; shaker (ctor 0x465207): pos +0x08/+0x0C/+0x10, radius +0x14.
+bool ShakerReachesEye(const float* xf)
+{
+    uint8_t* sys = Ptr(kCameraShaker);
+    if (!sys) {
+        return false;
+    }
+    uint8_t* head = sys + 4;
+    uint8_t* node = *reinterpret_cast<uint8_t**>(sys + 8);
+    for (int n = 0; node && node != head && n < 4096; ++n) {
+        if (uint8_t* s = *reinterpret_cast<uint8_t**>(node + 0xC)) {
+            float dx = xf[3] - Field<float>(s, 0x08);
+            float dy = xf[7] - Field<float>(s, 0x0C);
+            float dz = xf[11] - Field<float>(s, 0x10);
+            float r = Field<float>(s, 0x14) + 1.0f;
+            if (dx * dx + dy * dy + dz * dz <= r * r) {
+                return true;
+            }
+        }
+        node = *reinterpret_cast<uint8_t**>(node + 4);
+    }
+    return false;
+}
+
 uint8_t* TacticalCamera()
 {
     uint8_t* tv = Ptr(kTacticalView);
@@ -167,8 +194,13 @@ extern "C" void __cdecl S2_RecordMkAndOpen(uint8_t* viewB4)
     bool shake = Field<float>(viewB4, 0x64) != 0.0f || Field<float>(viewB4, 0x68) != 0.0f ||
                  Field<float>(viewB4, 0x74) > 0.01f;
     if (!shake) {
-        if (uint8_t* shaker = Ptr(kCameraShaker)) {
-            shake = reinterpret_cast<ShakeActiveFn>(kFnShakeActive)(shaker);
+        shake = ShakerReachesEye(r.xf);
+        if (!shake) {
+            if (uint8_t* shaker = Ptr(kCameraShaker)) {
+                if (reinterpret_cast<ShakeActiveFn>(kFnShakeActive)(shaker)) {
+                    ++g_cameraStats.aShakerFar; // a shaker exists but does not reach the camera: keep interpolating
+                }
+            }
         }
     }
     r.shake = shake;

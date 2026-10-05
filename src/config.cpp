@@ -115,6 +115,9 @@ Config ParseConfig(std::string_view text, std::string* warnings)
         else if (EqualsNoCase(key, "CameraInterpolation")) {
             ok = ParseBool(value, cfg.cameraInterpolation);
         }
+        else if (EqualsNoCase(key, "PresentPacing")) {
+            ok = ParseBool(value, cfg.presentPacing);
+        }
         else if (EqualsNoCase(key, "Pacing")) {
             if (EqualsNoCase(value, "stock")) {
                 cfg.pacing = Pacing::Stock;

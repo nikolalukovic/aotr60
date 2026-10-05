@@ -18,6 +18,7 @@ struct Config {
     bool allowLivingWorldMap = false;
     bool unitInterpolation = true;   // phase 2b: units drawn at half-steps on the inserted frames
     bool cameraInterpolation = true; // phase 3: camera picture interpolated on the inserted frames
+    bool presentPacing = true;       // without vsync: space the presented frames evenly
 };
 
 // Parses "Key = Value" lines; '#' or ';' start comments, [sections] and unknown keys are ignored.

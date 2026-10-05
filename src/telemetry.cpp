@@ -216,9 +216,28 @@ void Report(int64_t now)
                   g_cameraStats.bSwaps, g_cameraStats.aSwaps,
                   static_cast<unsigned long long>(g_t.clockResets - g_tPrev.clockResets), g_cameraStats.aCuts,
                   g_cameraStats.aShake, g_cameraStats.aNoHistory);
+    // Pacing detail (ms): mean release->Present for A and B, Present spacing extremes, Present waits, late releases.
+    const PacerStats& p = g_pacerStats;
+    const PacerStats& q = g_prevPacer;
+    auto ms = [](int64_t ticks) { return static_cast<double>(ticks) * 1000.0 / static_cast<double>(g_freq); };
+    uint32_t na = p.relPresentCountA - q.relPresentCountA;
+    uint32_t nb = p.relPresentCountB - q.relPresentCountB;
+    char extra[256];
+    std::snprintf(extra, sizeof(extra), ",%.2f,%.2f,%.2f,%.2f,%.1f,%u,%.1f,%u\r\n",
+                  na ? ms(p.relPresentTicksA - q.relPresentTicksA) / na : 0.0,
+                  nb ? ms(p.relPresentTicksB - q.relPresentTicksB) / nb : 0.0, ms(p.presentSpacingMin),
+                  ms(p.presentSpacingMax), ms(p.presentWaitTicks - q.presentWaitTicks), p.lateReleases - q.lateReleases,
+                  ms(p.lateReleaseTicks - q.lateReleaseTicks), g_cameraStats.aShakerFar);
+    size_t len = std::strlen(line);
+    if (len >= 2) {
+        line[len - 2] = 0; // drop "\r\n" and append the pacing columns
+    }
+    strncat_s(line, sizeof(line), extra, _TRUNCATE);
     CsvLine(line);
     g_tPrev = g_t;
     g_prevPresents = presents;
+    g_pacerStats.presentSpacingMin = 0;
+    g_pacerStats.presentSpacingMax = 0;
     g_prevPacer = g_pacerStats;
     g_lastReport = now;
 }
@@ -239,7 +258,9 @@ void TelemetryInit(const Config& cfg)
                                 FILE_ATTRIBUTE_NORMAL, nullptr);
             CsvLine("t_s,frac60,renders_s,a_renders_s,presents_s,late_skips,forced_skips,logic_ticks_s,logic_calls_s,"
                     "mframe_s,sync_ms_s,debt_ms,gaps,seed_outside_logic,tick_checks,tick_errors,c5_replays,"
-                    "cam_b_swaps,cam_a_swaps,clock_resets,cam_a_cuts,cam_a_shake,cam_a_nohist\r\n");
+                    "cam_b_swaps,cam_a_swaps,clock_resets,cam_a_cuts,cam_a_shake,cam_a_nohist,"
+                    "a_rel_present_ms,b_rel_present_ms,present_spacing_min_ms,present_spacing_max_ms,present_wait_ms,"
+                    "late_releases,late_release_ms,cam_shaker_far\r\n");
         }
     }
 }

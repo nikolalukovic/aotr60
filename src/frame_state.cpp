@@ -1,12 +1,12 @@
 #include "frame_state.h"
 
-void FrameState::BeginIteration(bool allowed, int stepperS, bool logicAdvanced)
+void FrameState::BeginIteration(bool allowStay, bool allowStart, int stepperS, bool logicAdvanced)
 {
     // Mode changes only at a pair boundary: before an X iteration (or between two stock iterations).
-    if (m60 && nextIsX && !allowed) {
+    if (m60 && nextIsX && !allowStay) {
         Reset();
     }
-    else if (!m60 && allowed && stepperS == 1 && logicAdvanced) {
+    else if (!m60 && allowStay && allowStart && stepperS == 1 && logicAdvanced) {
         m60 = 1;
         nextIsX = true;
         prevAdvancingA = false;

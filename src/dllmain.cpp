@@ -4,8 +4,10 @@
 
 #include "build_id.h"
 #include "config.h"
+#include "installer.h"
 #include "log.h"
 #include "paths.h"
+#include "runtime.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -15,7 +17,7 @@
 
 namespace {
 
-constexpr const char kVersion[] = "AotR60 0.1 (phase 0: passthrough)";
+constexpr const char kVersion[] = "AotR60 0.2 (phase 1/2a)";
 constexpr uintptr_t kGameImageBase = 0x00400000;
 
 Config LoadConfig(const std::wstring& dataDir)
@@ -60,8 +62,9 @@ void Startup()
     Log("%s loaded into %ls", kVersion, exe.c_str());
 
     Config cfg = dataDir.empty() ? Config{} : LoadConfig(dataDir);
-    Log("config: Enabled=%d Pacing=%s Telemetry=%d Fallback=%d", cfg.enabled ? 1 : 0,
-        cfg.pacing == Pacing::Stock ? "stock" : "nominal", cfg.telemetry, cfg.fallback ? 1 : 0);
+    Log("config: Enabled=%d Pacing=%s Telemetry=%d Fallback=%d UnitInterpolation=%d CameraInterpolation=%d",
+        cfg.enabled ? 1 : 0, cfg.pacing == Pacing::Stock ? "stock" : "nominal", cfg.telemetry, cfg.fallback ? 1 : 0,
+        cfg.unitInterpolation ? 1 : 0, cfg.cameraInterpolation ? 1 : 0);
 
     auto base = reinterpret_cast<const uint8_t*>(GetModuleHandleW(nullptr));
     if (reinterpret_cast<uintptr_t>(base) != kGameImageBase) {
@@ -74,9 +77,22 @@ void Startup()
         BuildName(info.build));
 
     switch (info.build) {
-    case GameBuild::AotrNormal:
-        Log("host: known build; 60 FPS patches arrive in phase 2 - running stock 30 FPS");
+    case GameBuild::AotrNormal: {
+        InitIntegratorVariables();
+        FrameControlInit(cfg);
+        PacerInit(cfg);
+        TelemetryInit(cfg);
+        std::string error;
+        size_t count = 0;
+        if (InstallSites(&error, &count)) {
+            Log("host: known build; %zu patch sites installed (60 FPS %s)", count,
+                cfg.enabled ? "enabled when a supported game is running" : "disabled in aotr60.ini");
+        }
+        else {
+            Log("host: patch verification failed - nothing patched, running stock 30 FPS: %s", error.c_str());
+        }
         break;
+    }
     case GameBuild::AotrDelayfix:
         Log("host: known build, 60 FPS not supported for delayfix (launcher PvP mode) - running stock 30 FPS");
         break;

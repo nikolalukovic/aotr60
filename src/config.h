@@ -16,6 +16,8 @@ struct Config {
     bool fallback = true;
     bool allowDelayfix = false;
     bool allowLivingWorldMap = false;
+    bool unitInterpolation = false;   // phase 2b: units drawn at half-steps on the inserted frames
+    bool cameraInterpolation = false; // phase 3: camera picture interpolated on the inserted frames
 };
 
 // Parses "Key = Value" lines; '#' or ';' start comments, [sections] and unknown keys are ignored.

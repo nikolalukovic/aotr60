@@ -22,9 +22,14 @@ struct FrameState {
     bool syncToggle = false;
     int32_t owedSyncMs = 0;
 
-    // Called at C0, before clientUpdate. `allowed` is the mode predicate (PLAN §1.8); `stepperS` and
+    // Called at C0, before clientUpdate. `allowStay` is the mode predicate (PLAN §1.8); `allowStart` adds the
+    // conditions needed only to switch on (m_frame >= 8, no camera time multiplier, ...). `stepperS` and
     // `logicAdvanced` (GC+0xC8) are the values the previous stepper left behind.
-    void BeginIteration(bool allowed, int stepperS, bool logicAdvanced);
+    void BeginIteration(bool allowStay, bool allowStart, int stepperS, bool logicAdvanced);
+    void BeginIteration(bool allowed, int stepperS, bool logicAdvanced)
+    {
+        BeginIteration(allowed, allowed, stepperS, logicAdvanced);
+    }
 
     // Halt hook decision, right after clientUpdate: force the stepper's halted branch?
     bool ForceHalt() const { return m60 && uiTick; }

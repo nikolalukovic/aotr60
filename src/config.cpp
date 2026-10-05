@@ -20,6 +20,10 @@ const char kDefaultConfigText[] =
     "; 1 = fall back to 30 FPS automatically when the PC cannot hold 60.\n"
     "Fallback = 1\n"
     "\n"
+    "; 1 = smooth unit movement / camera on the inserted frames; 0 = those frames repeat the previous positions.\n"
+    "UnitInterpolation = 0\n"
+    "CameraInterpolation = 0\n"
+    "\n"
     "; Not supported yet; keep at 0.\n"
     "AllowDelayfix = 0\n"
     "AllowLivingWorldMap = 0\n";
@@ -104,6 +108,12 @@ Config ParseConfig(std::string_view text, std::string* warnings)
         }
         else if (EqualsNoCase(key, "AllowLivingWorldMap")) {
             ok = ParseBool(value, cfg.allowLivingWorldMap);
+        }
+        else if (EqualsNoCase(key, "UnitInterpolation")) {
+            ok = ParseBool(value, cfg.unitInterpolation);
+        }
+        else if (EqualsNoCase(key, "CameraInterpolation")) {
+            ok = ParseBool(value, cfg.cameraInterpolation);
         }
         else if (EqualsNoCase(key, "Pacing")) {
             if (EqualsNoCase(value, "stock")) {

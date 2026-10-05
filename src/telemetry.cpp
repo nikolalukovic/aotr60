@@ -265,7 +265,12 @@ void TelemetryInit(const Config& cfg)
                     "a_rel_present_ms,b_rel_present_ms,present_spacing_min_ms,present_spacing_max_ms,present_wait_ms,"
                     "late_releases,late_release_ms,cam_shaker_far,on_time_pct\r\n");
             if (cfg.telemetry >= 2) {
-                std::wstring tpath = dir + L"\\aotr60_trace.txt";
+                SYSTEMTIME t;
+                GetLocalTime(&t);
+                wchar_t name[64];
+                swprintf(name, 64, L"\\aotr60_trace_%04u%02u%02u_%02u%02u%02u.txt", t.wYear, t.wMonth, t.wDay, t.wHour,
+                         t.wMinute, t.wSecond);
+                std::wstring tpath = dir + name;
                 g_trace = CreateFileW(tpath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
                                       FILE_ATTRIBUTE_NORMAL, nullptr);
                 const char header[] = "# logic_frame sub seed crc(sub 1 only) mode(30/60)\r\n";
@@ -347,6 +352,11 @@ void TelemetryOnModeChange(bool on, const char* reason)
 void TelemetryOnReset()
 {
     g_w.broken = true;
+    if (g_trace != INVALID_HANDLE_VALUE) {
+        const char marker[] = "# reset\r\n"; // new game, load, replay or exit: frame numbers restart
+        DWORD written;
+        WriteFile(g_trace, marker, sizeof(marker) - 1, &written, nullptr);
+    }
 }
 
 using LogicUpdateFn = uint32_t(__thiscall*)(uint8_t* logic, int sub);

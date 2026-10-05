@@ -18,7 +18,7 @@
 
 namespace {
 
-constexpr const char kVersion[] = "AotR60 0.2 (phase 1/2a)";
+constexpr const char kVersion[] = "AotR60 1.0";
 constexpr uintptr_t kGameImageBase = 0x00400000;
 
 Config LoadConfig(const std::wstring& dataDir)

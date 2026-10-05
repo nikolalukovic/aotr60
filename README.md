@@ -11,13 +11,19 @@ tutorials. Menus, multiplayer, replays and Create-a-Hero stay at the stock 30 FP
 authored at 30 fps over a still image, so 60 FPS would only show every picture twice). On the Living World map, fades,
 the switch to and from battles and other transitions run at 30 FPS for a moment.
 
+**Version 1.0** works with **Age of the Ring 9.3.3** (AotR launcher 1.3.2): `rotwk\game.dat` with SHA-256
+`cc08275d60ff8e3bfd4374c29d61304dea8336e6dd00ab8add88b1df95a705dc`. With any other `game.dat` (another AotR version,
+or the launcher's PvP delay-fix mode) AotR60 stays inactive and the game runs at the stock 30 FPS. See
+[CHANGELOG.md](CHANGELOG.md) for the features of each version and the
+[releases](../../releases) for downloads.
+
 ## Install
 
 1. Clone this repository **into your Age of the Ring folder** (the folder that contains `rotwk\` and `aotr\`):
 
    ```bat
    cd /d "D:\Games\Age of the Ring"
-   git clone <repository-url> aotr60
+   git clone <URL of this repository> aotr60
    ```
 
 2. Run `aotr60\install.cmd` (double-click it). It checks the game folder and the game version, then copies the
@@ -27,6 +33,10 @@ the switch to and from battles and other transitions run at 30 FPS for a moment.
    finished).
 
 `aotr60\uninstall.cmd` removes it again. To update, `git pull` in the `aotr60` folder and run `install.cmd` again.
+
+Without git: download `dinput8.dll` from the [latest release](../../releases/latest)
+and copy it to `rotwk\dinput8.dll` (delete that file to uninstall). The DLL checks the game version itself, so a wrong
+`game.dat` only means stock 30 FPS.
 
 AotR60 patches the game **in memory** when it starts; no game file is modified. The patches are applied only after
 the executable has been identified as the Age of the Ring build AotR60 was made for; with any other version the DLL

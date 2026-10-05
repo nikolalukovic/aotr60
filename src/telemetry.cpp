@@ -22,6 +22,7 @@ namespace {
 
 Config g_cfg;
 HANDLE g_csv = INVALID_HANDLE_VALUE;
+HANDLE g_trace = INVALID_HANDLE_VALUE; // Telemetry=2: one line per logic call
 int64_t g_freq = 1;
 int64_t g_start = 0;
 int64_t g_lastReport = 0;
@@ -223,11 +224,13 @@ void Report(int64_t now)
     uint32_t na = p.relPresentCountA - q.relPresentCountA;
     uint32_t nb = p.relPresentCountB - q.relPresentCountB;
     char extra[256];
-    std::snprintf(extra, sizeof(extra), ",%.2f,%.2f,%.2f,%.2f,%.1f,%u,%.1f,%u\r\n",
+    uint32_t iters = p.iterations - q.iterations;
+    double onTimePct = iters ? 100.0 * (p.onTimeIterations - q.onTimeIterations) / iters : 0.0;
+    std::snprintf(extra, sizeof(extra), ",%.2f,%.2f,%.2f,%.2f,%.1f,%u,%.1f,%u,%.1f\r\n",
                   na ? ms(p.relPresentTicksA - q.relPresentTicksA) / na : 0.0,
                   nb ? ms(p.relPresentTicksB - q.relPresentTicksB) / nb : 0.0, ms(p.presentSpacingMin),
                   ms(p.presentSpacingMax), ms(p.presentWaitTicks - q.presentWaitTicks), p.lateReleases - q.lateReleases,
-                  ms(p.lateReleaseTicks - q.lateReleaseTicks), g_cameraStats.aShakerFar);
+                  ms(p.lateReleaseTicks - q.lateReleaseTicks), g_cameraStats.aShakerFar, onTimePct);
     size_t len = std::strlen(line);
     if (len >= 2) {
         line[len - 2] = 0; // drop "\r\n" and append the pacing columns
@@ -260,7 +263,15 @@ void TelemetryInit(const Config& cfg)
                     "mframe_s,sync_ms_s,debt_ms,gaps,seed_outside_logic,tick_checks,tick_errors,c5_replays,"
                     "cam_b_swaps,cam_a_swaps,clock_resets,cam_a_cuts,cam_a_shake,cam_a_nohist,"
                     "a_rel_present_ms,b_rel_present_ms,present_spacing_min_ms,present_spacing_max_ms,present_wait_ms,"
-                    "late_releases,late_release_ms,cam_shaker_far\r\n");
+                    "late_releases,late_release_ms,cam_shaker_far,on_time_pct\r\n");
+            if (cfg.telemetry >= 2) {
+                std::wstring tpath = dir + L"\\aotr60_trace.txt";
+                g_trace = CreateFileW(tpath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
+                                      FILE_ATTRIBUTE_NORMAL, nullptr);
+                const char header[] = "# logic_frame sub seed crc(sub 1 only) mode(30/60)\r\n";
+                DWORD written;
+                WriteFile(g_trace, header, sizeof(header) - 1, &written, nullptr);
+            }
         }
     }
 }
@@ -339,6 +350,27 @@ void TelemetryOnReset()
 }
 
 using LogicUpdateFn = uint32_t(__thiscall*)(uint8_t* logic, int sub);
+using GetCrcFn = uint32_t(__thiscall*)(uint8_t* logic, int deepCrcFile);
+
+// Telemetry=2 determinism trace. After each logic tick (sub 1) the engine's own multiplayer sync checksum
+// GameLogic::getCRC 0x625886 is taken, exactly as GameLogic::update does for network games (0x62E7E4..0x62E7F6:
+// [0xDE87C7]=1, getCRC(0), [0xDE87C7]=0). It is read-only; it only runs at Telemetry=2.
+void TraceLogicCall(uint8_t* logic, int sub)
+{
+    uint32_t frame = Field<uint32_t>(logic, 0x40);
+    uint32_t crc = 0;
+    if (sub == 1) {
+        uint8_t saved = Read<uint8_t>(0xDE87C7);
+        Write<uint8_t>(0xDE87C7, 1);
+        crc = reinterpret_cast<GetCrcFn>(0x625886)(logic, 0);
+        Write<uint8_t>(0xDE87C7, saved);
+    }
+    char line[96];
+    int n = std::snprintf(line, sizeof(line), "%u %d %08X %08X %d\r\n", frame, sub, Read<uint32_t>(kLogicRngSeed), crc,
+                          g_m60 ? 60 : 30);
+    DWORD written;
+    WriteFile(g_trace, line, static_cast<DWORD>(n), &written, nullptr);
+}
 
 extern "C" uint32_t __fastcall LogicUpdateWrapper(uint8_t* logic, void*, int sub)
 {
@@ -368,5 +400,8 @@ extern "C" uint32_t __fastcall LogicUpdateWrapper(uint8_t* logic, void*, int sub
     uint32_t result = reinterpret_cast<LogicUpdateFn>(kFnLogicUpdate)(logic, sub);
     g_seedAtExit = Read<uint32_t>(kLogicRngSeed);
     g_seedValid = true;
+    if (g_trace != INVALID_HANDLE_VALUE) {
+        TraceLogicCall(logic, sub);
+    }
     return result;
 }

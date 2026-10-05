@@ -7,11 +7,13 @@
 // AI tick) also cost the stock game time, so they are no reason to leave 60. Only sustained overload is:
 //  - most iterations released noticeably late (the PC cannot render + step within half a stock frame), or
 //  - a large share of time lost window after window, or
+//  - hardly any iteration on schedule while time is being lost (slightly over budget all the time), or
 //  - (vsync) too many B Presents dropped to keep up with the display.
 struct PacerWindow {
     double lostRatio = 0.0;     // game time lost (not caught up) / window length
     double lateRatio = 0.0;     // iterations released more than a quarter interval late / iterations
     double skipRatio = 0.0;     // late-skipped B Presents / B-renders (vsync only)
+    double onTimeRatio = 1.0;   // iterations released on schedule / iterations
 };
 
 class FallbackPolicy {
@@ -26,6 +28,7 @@ private:
     int overloadedWindows_ = 0;
     int slowWindows_ = 0;
     int skipWindows_ = 0;
+    int sustainedWindows_ = 0;
     int cleanWindows_ = 0;
     int fallbacks_ = 0;
 };

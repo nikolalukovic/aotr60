@@ -20,6 +20,7 @@ struct PacerStats {
     int64_t presentSpacingMax = 0;
     int64_t presentWaitTicks = 0;
     uint32_t lateReleases = 0;
+    uint32_t onTimeIterations = 0;
     int64_t lateReleaseTicks = 0;
 };
 extern PacerStats g_pacerStats;

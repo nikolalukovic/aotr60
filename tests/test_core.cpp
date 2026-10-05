@@ -47,10 +47,10 @@ TEST(config_parses_values_comments_and_case)
                              &warnings);
     CHECK(!cfg.enabled);
     CHECK(cfg.pacing == Pacing::Nominal);
-    CHECK_EQ(cfg.telemetry, 1); // 2 is not implemented yet and maps to 1
+    CHECK_EQ(cfg.telemetry, 2);
     CHECK(cfg.fallback);
     CHECK(cfg.allowLivingWorldMap);
-    CHECK(warnings.find("Telemetry=2") != std::string::npos);
+    CHECK(warnings.empty());
 }
 
 TEST(config_parses_interpolation_switches)

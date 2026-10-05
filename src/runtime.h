@@ -79,6 +79,7 @@ void __cdecl OnPostRender();
 void __cdecl OnEngineReset();
 uint32_t __cdecl AotR60_Pacer(uint8_t* engine);
 int __cdecl AotR60_PresentSkip();
+void __cdecl AotR60_PresentDone();
 void __cdecl CamSwapToMk_B(uint8_t* viewB4);
 void __cdecl S2_RecordMkAndOpen(uint8_t* viewB4);
 void __cdecl SceneOpen_A();

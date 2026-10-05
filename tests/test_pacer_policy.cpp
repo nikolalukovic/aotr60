@@ -4,12 +4,13 @@
 
 namespace {
 
-PacerWindow W(double lost, double late = 0.0, double skip = 0.0)
+PacerWindow W(double lost, double late = 0.0, double skip = 0.0, double onTime = 0.95)
 {
     PacerWindow w;
     w.lostRatio = lost;
     w.lateRatio = late;
     w.skipRatio = skip;
+    w.onTimeRatio = onTime;
     return w;
 }
 
@@ -77,4 +78,22 @@ TEST(fallback_backoff_doubles_and_resets_after_clean_play)
         CHECK(!p.AddWindow(W(0.005)));
     }
     CHECK_EQ(p.NextBackoffSeconds(), 30);
+}
+
+TEST(fallback_on_slight_permanent_overload)
+{
+    // Iterations of ~17 ms: each release under a millisecond late, owed time capped, 2-3 % lost per window but
+    // hardly any iteration on schedule (pacer simulation S8b). Stock 30 FPS would hold full speed here.
+    FallbackPolicy p;
+    CHECK(!p.AddWindow(W(0.029, 0.0, 0.0, 0.15)));
+    CHECK(p.AddWindow(W(0.030, 0.0, 0.0, 0.10)));
+}
+
+TEST(fallback_ignores_near_limit_loads_that_hold_speed)
+{
+    // 16.3 ms iterations with heavy ticks (simulation S10/S11): on-time ratio stays >= 0.60, nothing lost.
+    FallbackPolicy p;
+    for (int i = 0; i < 20; ++i) {
+        CHECK(!p.AddWindow(W(0.001, 0.05, 0.0, 0.60)));
+    }
 }

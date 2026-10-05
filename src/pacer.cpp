@@ -40,7 +40,10 @@ int64_t g_windowDebt = 0;
 uint32_t g_windowBRenders = 0;
 uint32_t g_windowLateSkips = 0;
 uint32_t g_windowIterations = 0;
-uint32_t g_windowLateIterations = 0; // released more than a quarter interval late
+uint32_t g_windowLateIterations = 0;   // released more than a quarter interval late
+uint32_t g_windowOnTimeIterations = 0; // released on schedule (waited)
+int64_t g_presentCall = 0;             // QPC when the current Present was submitted
+uint32_t g_presentsSinceBlock = 1000;  // Presents since one blocked (vsync queue full)
 int64_t g_fallbackUntil = 0;
 FallbackPolicy g_policy;
 
@@ -107,6 +110,7 @@ void EvaluateWindow(int64_t now)
     w.lostRatio = static_cast<double>(g_windowDebt) / static_cast<double>(length);
     w.lateRatio = g_windowIterations ? static_cast<double>(g_windowLateIterations) / g_windowIterations : 0.0;
     w.skipRatio = g_windowBRenders ? static_cast<double>(g_windowLateSkips) / g_windowBRenders : 0.0;
+    w.onTimeRatio = g_windowIterations ? static_cast<double>(g_windowOnTimeIterations) / g_windowIterations : 1.0;
     g_pacerStats.lastDebtRatio = w.lostRatio;
     g_pacerStats.lastSkipRatio = w.skipRatio;
     if (g_policy.AddWindow(w)) {
@@ -114,8 +118,8 @@ void EvaluateWindow(int64_t now)
         g_fallbackUntil = now + backoff * g_freq;
         ++g_pacerStats.fallbacks;
         Log("pacer: falling back to 30 FPS for %d s (over the last %llds: lost time %.2f%%, late iterations %.1f%%, "
-            "late Present skips %.1f%%)", backoff, static_cast<long long>(kWindowSeconds), w.lostRatio * 100.0,
-            w.lateRatio * 100.0, w.skipRatio * 100.0);
+            "on-time iterations %.1f%%, late Present skips %.1f%%)", backoff, static_cast<long long>(kWindowSeconds),
+            w.lostRatio * 100.0, w.lateRatio * 100.0, w.onTimeRatio * 100.0, w.skipRatio * 100.0);
     }
     g_windowStart = now;
     g_windowDebt = 0;
@@ -123,6 +127,7 @@ void EvaluateWindow(int64_t now)
     g_windowLateSkips = 0;
     g_windowIterations = 0;
     g_windowLateIterations = 0;
+    g_windowOnTimeIterations = 0;
 }
 
 } // namespace
@@ -151,6 +156,9 @@ void PacerOnModeChange(bool)
     g_windowLateSkips = 0;
     g_windowIterations = 0;
     g_windowLateIterations = 0;
+    g_windowOnTimeIterations = 0;
+    g_presentCall = 0;
+    g_presentsSinceBlock = 1000;
     g_policy.Reset();
     g_owed = 0;
     g_releaseTime = 0;
@@ -234,6 +242,8 @@ extern "C" uint32_t __cdecl AotR60_Pacer(uint8_t* engine)
             g_deadline = now;
         }
         else {
+            ++g_windowOnTimeIterations;
+            ++g_pacerStats.onTimeIterations;
             int64_t pay = g_owed;
             if (pay > g_interval / 8) {
                 pay = g_interval / 8;
@@ -308,20 +318,21 @@ extern "C" int __cdecl AotR60_PresentSkip()
     }
     if (!immediate) {
         // FIFO (vsync): drop a B Present that is already a frame behind the absolute schedule (including time
-        // still owed from re-anchored late releases), so the queue catches up - this absorbs the 60.6 vs 60 Hz
-        // deficit of a 60 Hz display and keeps the exact stock speed.
-        if (bRender && g_pacerRanRid == g_renderId - 1 && g_deadline != 0 && now - (g_deadline - g_owed) >= g_interval) {
+        // still owed from re-anchored late releases) - but only while the swap queue is actually full (a recent
+        // Present blocked). This absorbs the 60.6 vs 60 Hz deficit of a 60 Hz display and keeps the exact stock
+        // speed; with room in the queue the shortened intervals repay owed time by themselves.
+        if (bRender && g_presentsSinceBlock < 2 && g_pacerRanRid == g_renderId - 1 && g_deadline != 0 &&
+            now - (g_deadline - g_owed) >= g_interval) {
             ++g_windowLateSkips;
             ++g_pacerStats.lateSkips;
             return 1;
         }
-        RecordPresentSpacing(now, paced);
-        return 0;
     }
-    // No vsync: Presents reach the screen when they are submitted. The A-render does all A-only work before its
-    // Present and the B-render almost none, so space the Presents evenly (half a stock frame apart) - but only
-    // while the schedule is clean (nothing owed), so the wait never takes time the logic step needs. The small
-    // slack lets the phase drift earlier when the A-render gets cheaper; the cap keeps time for the logic step.
+    // The A-render does all A-only work before its Present and the B-render almost none, so space the Presents
+    // evenly (half a stock frame apart). Without vsync they reach the screen when submitted; with vsync on a
+    // display of at least twice the render rate the queue never fills and spacing decides the vblank cadence.
+    // Only while the schedule is clean (nothing owed), so the wait never takes time the logic step needs. The
+    // small slack lets the phase drift earlier when the A-render gets cheaper; the cap keeps time for the logic.
     if (g_cfg.presentPacing && paced && g_owed == 0 && g_lastPresent != 0 && g_halfPair > 0) {
         int64_t target = g_lastPresent + g_halfPair - g_freq / 4000;
         int64_t latest = g_releaseTime + g_halfPair * 6 / 10;
@@ -335,7 +346,24 @@ extern "C" int __cdecl AotR60_PresentSkip()
         }
     }
     RecordPresentSpacing(now, paced);
+    g_presentCall = now;
     return 0;
+}
+
+// Right after every 60-mode Present returns: note whether it blocked (vsync queue full).
+extern "C" void __cdecl AotR60_PresentDone()
+{
+    if (!OnMainThread() || g_presentCall == 0) {
+        return;
+    }
+    int64_t took = Now() - g_presentCall;
+    g_presentCall = 0;
+    if (took > g_freq / 1000) {
+        g_presentsSinceBlock = 0;
+    }
+    else if (g_presentsSinceBlock < 1000) {
+        ++g_presentsSinceBlock;
+    }
 }
 
 int64_t PacerFrequency()

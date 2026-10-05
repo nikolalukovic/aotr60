@@ -33,7 +33,7 @@ EXTERN g_lp4b:BYTE, g_uiPart4b:BYTE, g_wanim4b:BYTE
 EXTERN g_featPresent:BYTE, g_radarAFrame:DWORD
 
 EXTERN OnPreRender:PROC, OnPostRender:PROC, OnEngineReset:PROC
-EXTERN AotR60_Pacer:PROC, AotR60_PresentSkip:PROC
+EXTERN AotR60_Pacer:PROC, AotR60_PresentSkip:PROC, AotR60_PresentDone:PROC
 EXTERN CamSwapToMk_B:PROC, S2_RecordMkAndOpen:PROC, SceneOpen_A:PROC, SceneRestore:PROC, CamSwapEndGuard:PROC
 
 ; g_anomaly bits (keep in sync with runtime.h)
@@ -784,6 +784,12 @@ present:
     push ebx
     push eax
     call dword ptr [edx + 44h]
+    cmp byte ptr [g_m60], 0
+    je presented
+    push eax
+    call AotR60_PresentDone             ; cdecl(): did this Present block (full vsync queue)?
+    pop eax
+presented:
     cmp eax, 88760868h                  ; D3DERR_DEVICELOST
     jne done
     mov byte ptr [g_gapDevLost], 1

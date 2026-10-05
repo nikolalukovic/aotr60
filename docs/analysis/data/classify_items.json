@@ -1,0 +1,5184 @@
+[
+{
+"entry": "00442e56",
+"name": "FUN_00442e56",
+"refs": [
+[
+"00442e96",
+"F_0.0333_s_per_client",
+"FMUL dword ptr [0x00d9f62c]"
+]
+]
+},
+{
+"entry": "004431e5",
+"name": "FUN_004431e5",
+"refs": [
+[
+"004433cc",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"00443409",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00448b51",
+"name": "FUN_00448b51",
+"refs": [
+[
+"00448cda",
+"F_GAMESPEED_MULT",
+"FLD dword ptr [0x00d9f498]"
+]
+]
+},
+{
+"entry": "0044b788",
+"name": "FUN_0044b788",
+"refs": [
+[
+"0044b8dd",
+"INIT_msframe@0xdc7a8c",
+"ADD EAX,dword ptr [0x00dc7a8c]"
+],
+[
+"0044b911",
+"INIT_msframe@0xdc7a8c",
+"MOV EAX,[0x00dc7a8c]"
+]
+]
+},
+{
+"entry": "0044bf2a",
+"name": "FUN_0044bf2a",
+"refs": [
+[
+"0044bf62",
+"INIT_msframe@0xdc7a8c",
+"MOV [0x00dc7a8c],EAX"
+]
+]
+},
+{
+"entry": "0044d664",
+"name": "FUN_0044d664",
+"refs": [
+[
+"0044d698",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "0044dfba",
+"name": "FUN_0044dfba",
+"refs": [
+[
+"0044e02f",
+"CLIENT_FPS_INT_30",
+"MOV ESI,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00450abc",
+"name": "FUN_00450abc",
+"refs": [
+[
+"00450b0c",
+"F_33.33_ms_per_client",
+"FMUL dword ptr [0x00d9f620]"
+],
+[
+"00450b50",
+"F_33.33_ms_per_client",
+"FLD dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "00452c50",
+"name": "FUN_00452c50",
+"refs": [
+[
+"00452c9f",
+"F_33.33_ms_per_client",
+"MOVSS XMM0,dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "00452e0e",
+"name": "FUN_00452e0e",
+"refs": [
+[
+"00452e2a",
+"F_33.33_ms_per_client",
+"COMISS XMM0,dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "0045a188",
+"name": "FUN_0045a188",
+"refs": [
+[
+"0045a1ba",
+"F_33.33_ms_per_client",
+"MOVSS XMM0,dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "0045c675",
+"name": "FUN_0045c675",
+"refs": [
+[
+"0045c6f5",
+"F_33.33_ms_per_client",
+"MOVSS XMM0,dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "0045cc91",
+"name": "FUN_0045cc91",
+"refs": [
+[
+"0045cccd",
+"F_33.33_ms_per_client",
+"MOVSS XMM1,dword ptr [0x00d9f620]"
+],
+[
+"0045cd0a",
+"F_33.33_ms_per_client",
+"MOVSS XMM0,dword ptr [0x00d9f620]"
+],
+[
+"0045cd31",
+"F_33.33_ms_per_client",
+"COMISS XMM0,dword ptr [0x00d9f620]"
+],
+[
+"0045cdce",
+"F_33.33_ms_per_client",
+"MOVSS XMM0,dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "0045e9d1",
+"name": "FUN_0045e9d1",
+"refs": [
+[
+"0045efe5",
+"F_33.33_ms_per_client",
+"SUBSS XMM0,dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "0046154d",
+"name": "FUN_0046154d",
+"refs": [
+[
+"004615bf",
+"F_33.33_ms_per_client",
+"MOVSS XMM1,dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "00461a83",
+"name": "FUN_00461a83",
+"refs": [
+[
+"00461af5",
+"F_33.33_ms_per_client",
+"COMISS XMM0,dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "0046f48e",
+"name": "FUN_0046f48e",
+"refs": [
+[
+"0046f66a",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0048017a",
+"name": "FUN_0048017a",
+"refs": [
+[
+"004801d5",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00480215",
+"name": "FUN_00480215",
+"refs": [
+[
+"00480268",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "004802aa",
+"name": "FUN_004802aa",
+"refs": [
+[
+"004802fd",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "0048033f",
+"name": "FUN_0048033f",
+"refs": [
+[
+"00480392",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "004803d4",
+"name": "FUN_004803d4",
+"refs": [
+[
+"00480427",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00480469",
+"name": "FUN_00480469",
+"refs": [
+[
+"004804bc",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "004804fe",
+"name": "FUN_004804fe",
+"refs": [
+[
+"00480551",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00480593",
+"name": "FUN_00480593",
+"refs": [
+[
+"004805e6",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00480628",
+"name": "FUN_00480628",
+"refs": [
+[
+"0048067b",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "004806bd",
+"name": "FUN_004806bd",
+"refs": [
+[
+"00480710",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "004808b7",
+"name": "FUN_004808b7",
+"refs": [
+[
+"00480912",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "0048095c",
+"name": "FUN_0048095c",
+"refs": [
+[
+"0048099c",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00480b64",
+"name": "FUN_00480b64",
+"refs": [
+[
+"00480bb7",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00480c46",
+"name": "FUN_00480c46",
+"refs": [
+[
+"00480c9d",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00480d1f",
+"name": "FUN_00480d1f",
+"refs": [
+[
+"00480d76",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00480df8",
+"name": "FUN_00480df8",
+"refs": [
+[
+"00480e4f",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00480ed1",
+"name": "FUN_00480ed1",
+"refs": [
+[
+"00480f28",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00480faa",
+"name": "FUN_00480faa",
+"refs": [
+[
+"00481001",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00481083",
+"name": "FUN_00481083",
+"refs": [
+[
+"004810da",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "0048115c",
+"name": "FUN_0048115c",
+"refs": [
+[
+"004811b3",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00481235",
+"name": "FUN_00481235",
+"refs": [
+[
+"0048128c",
+"CLIENT_FPS_INT_30",
+"FIMUL dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00485db0",
+"name": "FUN_00485db0",
+"refs": [
+[
+"00485dd4",
+"INIT_msframe@0xdc7a8c",
+"IDIV dword ptr [0x00dc7a8c]"
+]
+]
+},
+{
+"entry": "00485e5f",
+"name": "FUN_00485e5f",
+"refs": [
+[
+"00485e7a",
+"INIT_msframe@0xdc7a8c",
+"IDIV dword ptr [0x00dc7a8c]"
+],
+[
+"00485e9a",
+"INIT_msframe@0xdc7a8c",
+"IDIV dword ptr [0x00dc7a8c]"
+]
+]
+},
+{
+"entry": "00485f0f",
+"name": "FUN_00485f0f",
+"refs": [
+[
+"00485f62",
+"INIT_msframe@0xdc7a8c",
+"IMUL EAX,dword ptr [0x00dc7a8c]"
+]
+]
+},
+{
+"entry": "00486253",
+"name": "FUN_00486253",
+"refs": [
+[
+"00486279",
+"INIT_msframe@0xdc7a8c",
+"IMUL EAX,dword ptr [0x00dc7a8c]"
+]
+]
+},
+{
+"entry": "0048868b",
+"name": "FUN_0048868b",
+"refs": [
+[
+"004886b1",
+"INIT_msframe@0xdc7a8c",
+"IDIV dword ptr [0x00dc7a8c]"
+],
+[
+"004887f4",
+"INIT_msframe@0xdc7a8c",
+"IDIV dword ptr [0x00dc7a8c]"
+]
+]
+},
+{
+"entry": "0048885e",
+"name": "FUN_0048885e",
+"refs": [
+[
+"0048887a",
+"INIT_msframe@0xdc7a8c",
+"IDIV dword ptr [0x00dc7a8c]"
+],
+[
+"0048892e",
+"INIT_msframe@0xdc7a8c",
+"IDIV dword ptr [0x00dc7a8c]"
+],
+[
+"004889b2",
+"INIT_msframe@0xdc7a8c",
+"IDIV dword ptr [0x00dc7a8c]"
+]
+]
+},
+{
+"entry": "0048a953",
+"name": "FUN_0048a953",
+"refs": [
+[
+"0048aa62",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+],
+[
+"0048a9f2",
+"INIT_msframe@0xdc7a8c",
+"PUSH dword ptr [0x00dc7a8c]"
+],
+[
+"0048aae5",
+"INIT_msframe@0xdc7a8c",
+"PUSH dword ptr [0x00dc7a8c]"
+],
+[
+"0048ab06",
+"INIT_msframe@0xdc7a8c",
+"PUSH dword ptr [0x00dc7a8c]"
+]
+]
+},
+{
+"entry": "0048d26b",
+"name": "FUN_0048d26b",
+"refs": [
+[
+"0048d3c5",
+"INIT_msframe@0xdc7a8c",
+"IDIV dword ptr [0x00dc7a8c]"
+]
+]
+},
+{
+"entry": "004b2f9e",
+"name": "FUN_004b2f9e",
+"refs": [
+[
+"004b3022",
+"F_200_ms_per_logic",
+"FMUL dword ptr [0x00d9f614]"
+]
+]
+},
+{
+"entry": "004b67d4",
+"name": "FUN_004b67d4",
+"refs": [
+[
+"004b6855",
+"F_200_ms_per_logic",
+"MULSS XMM1,dword ptr [0x00d9f614]"
+]
+]
+},
+{
+"entry": "004be587",
+"name": "FUN_004be587",
+"refs": [
+[
+"004bee49",
+"F_0.005_per_ms_logic",
+"MULSS XMM0,dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "004c451d",
+"name": "FUN_004c451d",
+"refs": [
+[
+"004c4f74",
+"F_0.03_client_per_ms",
+"FLD dword ptr [0x00d9f624]"
+],
+[
+"004c4f8e",
+"F_0.03_client_per_ms",
+"FLD dword ptr [0x00d9f624]"
+],
+[
+"004c512d",
+"F_0.03_client_per_ms",
+"FMUL dword ptr [0x00d9f624]"
+],
+[
+"004c513e",
+"F_0.03_client_per_ms",
+"FMUL dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "004ce3a8",
+"name": "FUN_004ce3a8",
+"refs": [
+[
+"004ce443",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"004ce456",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "004cf2b5",
+"name": "FUN_004cf2b5",
+"refs": [
+[
+"004cf2bb",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+],
+[
+"004cf3cf",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "005dc6e0",
+"name": "FUN_005dc6e0",
+"refs": [
+[
+"005dc6ee",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"005dc702",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"005dc70e",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "005dcb28",
+"name": "FUN_005dcb28",
+"refs": [
+[
+"005dcb6f",
+"F_0.03_client_per_ms",
+"FMUL dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "005dd618",
+"name": "FUN_005dd618",
+"refs": [
+[
+"005dd986",
+"F_33.33_ms_per_client",
+"SUBSS XMM0,dword ptr [0x00d9f620]"
+],
+[
+"005dd997",
+"F_33.33_ms_per_client",
+"SUBSS XMM0,dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "005df46b",
+"name": "FUN_005df46b",
+"refs": [
+[
+"005df4ad",
+"LTR_INT_5",
+"FIMUL dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "005dff7a",
+"name": "FUN_005dff7a",
+"refs": [
+[
+"005dff96",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "005e05ab",
+"name": "FUN_005e05ab",
+"refs": [
+[
+"005e0776",
+"F_0.03_client_per_ms",
+"FLD dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "005e1270",
+"name": "FUN_005e1270",
+"refs": [
+[
+"005e1cf4",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "005e36fb",
+"name": "FUN_005e36fb",
+"refs": [
+[
+"005e3724",
+"F_0.2_s_per_logic",
+"FMUL dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "005e3796",
+"name": "FUN_005e3796",
+"refs": [
+[
+"005e37ac",
+"F_0.2_s_per_logic",
+"FMUL dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "005e37d4",
+"name": "FUN_005e37d4",
+"refs": [
+[
+"005e37f1",
+"F_0.2_s_per_logic",
+"MOVSS XMM0,dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "005e3f49",
+"name": "FUN_005e3f49",
+"refs": [
+[
+"005e3f94",
+"F_0.2_s_per_logic",
+"MULSS XMM0,dword ptr [0x00d9f61c]"
+],
+[
+"005e3fbe",
+"F_0.2_s_per_logic",
+"MULSS XMM0,dword ptr [0x00d9f61c]"
+],
+[
+"005e3fc8",
+"F_0.2_s_per_logic",
+"MOVSS XMM0,dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "005e4326",
+"name": "FUN_005e4326",
+"refs": [
+[
+"005e4385",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+],
+[
+"005e43ba",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+],
+[
+"005e43c8",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "005e586f",
+"name": "FUN_005e586f",
+"refs": [
+[
+"005e5acb",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "005e6b6b",
+"name": "FUN_005e6b6b",
+"refs": [
+[
+"005e6cc1",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "005e76ac",
+"name": "FUN_005e76ac",
+"refs": [
+[
+"005e77ba",
+"LTR_INT_5",
+"CMP EAX,dword ptr [0x00d9f608]"
+],
+[
+"005e7a96",
+"LTR_INT_5",
+"CVTSI2SS XMM2,dword ptr [0x00d9f608]"
+],
+[
+"005e7b8e",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00602ffe",
+"name": "FUN_00602ffe",
+"refs": [
+[
+"00602ffe",
+"INIT_ltr@0xde3bcc",
+"MOV EAX,[0x00de3bcc]"
+]
+]
+},
+{
+"entry": "0060300a",
+"name": "FUN_0060300a",
+"refs": [
+[
+"0060300a",
+"INIT_ltr@0xde3bcc",
+"MOV EAX,[0x00de3bcc]"
+]
+]
+},
+{
+"entry": "00605021",
+"name": "FUN_00605021",
+"refs": [
+[
+"00605090",
+"LTR_INT_5",
+"FIDIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00605e03",
+"name": "FUN_00605e03",
+"refs": [
+[
+"00605e3e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00608d0b",
+"name": "FUN_00608d0b",
+"refs": [
+[
+"00608e19",
+"F_0.005_per_ms_logic",
+"FLD dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "00609092",
+"name": "FUN_00609092",
+"refs": [
+[
+"0060911c",
+"F_0.005_per_ms_logic",
+"FLD dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "00609200",
+"name": "FUN_00609200",
+"refs": [
+[
+"0060925e",
+"F_0.005_per_ms_logic",
+"FLD dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "00609685",
+"name": "FUN_00609685",
+"refs": [
+[
+"00609820",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0060a15c",
+"name": "FUN_0060a15c",
+"refs": [
+[
+"0060a198",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "006164d7",
+"name": "FUN_006164d7",
+"refs": [
+[
+"006165d1",
+"LTR_INT_5",
+"IDIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00626087",
+"name": "FUN_00626087",
+"refs": [
+[
+"00626092",
+"LTR_INT_5",
+"IMUL EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0063239d",
+"name": "FUN_0063239d",
+"refs": [
+[
+"006323b2",
+"F_GAMESPEED_MULT",
+"COMISS XMM0,dword ptr [0x00d9f498]"
+]
+]
+},
+{
+"entry": "0063252f",
+"name": "FUN_0063252f",
+"refs": [
+[
+"0063252f",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+],
+[
+"00632535",
+"LTR_INT_5",
+"IDIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "006325a0",
+"name": "FUN_006325a0",
+"refs": [
+[
+"0063260f",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+],
+[
+"00632615",
+"LTR_INT_5",
+"IDIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00632994",
+"name": "FUN_00632994",
+"refs": [
+[
+"00632a95",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+],
+[
+"00632a9b",
+"LTR_INT_5",
+"IDIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00635cf5",
+"name": "FUN_00635cf5",
+"refs": [
+[
+"00635dca",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+],
+[
+"00635dd0",
+"LTR_INT_5",
+"IDIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00639fef",
+"name": "FUN_00639fef",
+"refs": [
+[
+"0063a043",
+"F_GAMESPEED_MULT",
+"MOVSS XMM0,dword ptr [0x00d9f498]"
+],
+[
+"0063a080",
+"F_GAMESPEED_MULT",
+"MOVSS dword ptr [0x00d9f498],XMM0"
+],
+[
+"0063a09d",
+"F_GAMESPEED_MULT",
+"MOVSS dword ptr [0x00d9f498],XMM0"
+],
+[
+"0063a14a",
+"F_GAMESPEED_MULT",
+"MOVSS dword ptr [0x00d9f498],XMM0"
+],
+[
+"0063a154",
+"F_GAMESPEED_MULT",
+"MOVSS XMM0,dword ptr [0x00d9f498]"
+],
+[
+"0063a1a1",
+"F_GAMESPEED_MULT",
+"FMUL dword ptr [0x00d9f498]"
+]
+]
+},
+{
+"entry": "0063cef1",
+"name": "FUN_0063cef1",
+"refs": [
+[
+"0063cf0f",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+],
+[
+"0063cf15",
+"LTR_INT_5",
+"IDIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "006429ad",
+"name": "FUN_006429ad",
+"refs": [
+[
+"00642b5f",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0064336b",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"00643381",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0064345c",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0064347b",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0064349e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00645143",
+"name": "FUN_00645143",
+"refs": [
+[
+"006451c7",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00646771",
+"name": "FUN_00646771",
+"refs": [
+[
+"00646781",
+"F_33.33_ms_per_client",
+"FLD dword ptr [0x00d9f620]"
+]
+]
+},
+{
+"entry": "0064849e",
+"name": "FUN_0064849e",
+"refs": [
+[
+"006487a3",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0065dd0f",
+"name": "FUN_0065dd0f",
+"refs": [
+[
+"0065dde9",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0065de5e",
+"name": "FUN_0065de5e",
+"refs": [
+[
+"0065deb8",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00662cc6",
+"name": "FUN_00662cc6",
+"refs": [
+[
+"00662ce8",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00663802",
+"name": "FUN_00663802",
+"refs": [
+[
+"006638ac",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+],
+[
+"006638bb",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "006638fc",
+"name": "FUN_006638fc",
+"refs": [
+[
+"00663998",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "006639cf",
+"name": "FUN_006639cf",
+"refs": [
+[
+"00663c2c",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00663c6b",
+"name": "FUN_00663c6b",
+"refs": [
+[
+"00663cba",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00664f93",
+"name": "FUN_00664f93",
+"refs": [
+[
+"00664ff2",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+],
+[
+"00665031",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00665c33",
+"name": "FUN_00665c33",
+"refs": [
+[
+"00666803",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00667ed1",
+"name": "FUN_00667ed1",
+"refs": [
+[
+"00667f9c",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00668af8",
+"name": "FUN_00668af8",
+"refs": [
+[
+"00668db8",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00669932",
+"name": "FUN_00669932",
+"refs": [
+[
+"0066a3de",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0066b3fd",
+"name": "FUN_0066b3fd",
+"refs": [
+[
+"0066b47d",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0066c748",
+"name": "FUN_0066c748",
+"refs": [
+[
+"0066c8ef",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0066d16e",
+"name": "FUN_0066d16e",
+"refs": [
+[
+"0066d5a0",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"0066d5dd",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"0066d603",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0066da5f",
+"name": "FUN_0066da5f",
+"refs": [
+[
+"0066db8f",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"0066dd32",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0066e8ff",
+"name": "FUN_0066e8ff",
+"refs": [
+[
+"0066e925",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0066f1a8",
+"name": "FUN_0066f1a8",
+"refs": [
+[
+"0066f1f5",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+],
+[
+"0066f203",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00673114",
+"name": "FUN_00673114",
+"refs": [
+[
+"006731ca",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+],
+[
+"00673222",
+"F_0.0333_s_per_client",
+"MOVSS XMM0,dword ptr [0x00d9f62c]"
+],
+[
+"00673289",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006732dc",
+"name": "FUN_006732dc",
+"refs": [
+[
+"00673494",
+"CLIENT_FPS_INT_30",
+"CVTSI2SS XMM1,dword ptr [0x00d9f60c]"
+],
+[
+"0067349c",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "006740f5",
+"name": "FUN_006740f5",
+"refs": [
+[
+"0067415c",
+"INIT_ltr@0xde45f0",
+"CMP EBX,dword ptr [0x00de45f0]"
+],
+[
+"0067416d",
+"INIT_ltr@0xde45f0",
+"CMP EBX,dword ptr [0x00de45f0]"
+]
+]
+},
+{
+"entry": "00675996",
+"name": "FUN_00675996",
+"refs": [
+[
+"00675d5b",
+"INIT_half@0xde45d8",
+"DIV dword ptr [0x00de45d8]"
+]
+]
+},
+{
+"entry": "006760f9",
+"name": "FUN_006760f9",
+"refs": [
+[
+"00676151",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "0067d08d",
+"name": "FUN_0067d08d",
+"refs": [
+[
+"0067d0b6",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0067dbf7",
+"name": "FUN_0067dbf7",
+"refs": [
+[
+"0067dc74",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0068c7c1",
+"name": "FUN_0068c7c1",
+"refs": [
+[
+"0068c7d6",
+"LTR_INT_5",
+"IMUL EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0068c89b",
+"name": "FUN_0068c89b",
+"refs": [
+[
+"0068c8c2",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0068c91b",
+"name": "FUN_0068c91b",
+"refs": [
+[
+"0068c91b",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0068c933",
+"name": "FUN_0068c933",
+"refs": [
+[
+"0068c934",
+"LTR_INT_5",
+"MOV ESI,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0068d440",
+"name": "FUN_0068d440",
+"refs": [
+[
+"0068d4a3",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "006903b6",
+"name": "FUN_006903b6",
+"refs": [
+[
+"00690444",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0069068d",
+"name": "FUN_0069068d",
+"refs": [
+[
+"0069070f",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00691059",
+"name": "FUN_00691059",
+"refs": [
+[
+"006910c1",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+],
+[
+"006910d6",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+],
+[
+"006910eb",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00691106",
+"name": "FUN_00691106",
+"refs": [
+[
+"00691172",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+],
+[
+"00691187",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+],
+[
+"0069119c",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0069320d",
+"name": "FUN_0069320d",
+"refs": [
+[
+"00693538",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00696800",
+"name": "FUN_00696800",
+"refs": [
+[
+"00696835",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+],
+[
+"006968a5",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0069dea9",
+"name": "FUN_0069dea9",
+"refs": [
+[
+"0069df0e",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+],
+[
+"0069df5e",
+"INIT_ltr@0xde4848",
+"MOV ECX,dword ptr [0x00de4848]"
+]
+]
+},
+{
+"entry": "0069e5bb",
+"name": "FUN_0069e5bb",
+"refs": [
+[
+"0069e5e3",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006a0bc0",
+"name": "FUN_006a0bc0",
+"refs": [
+[
+"006a0eb8",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+],
+[
+"006a12a9",
+"F_0.2_s_per_logic",
+"FMUL dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "006a1770",
+"name": "FUN_006a1770",
+"refs": [
+[
+"006a181a",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+],
+[
+"006a183f",
+"F_0.03_client_per_ms",
+"FLD dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "006a1875",
+"name": "FUN_006a1875",
+"refs": [
+[
+"006a1910",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "006a1978",
+"name": "FUN_006a1978",
+"refs": [
+[
+"006a1a32",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "006a1f4d",
+"name": "FUN_006a1f4d",
+"refs": [
+[
+"006a1fb5",
+"LTR_INT_5",
+"IDIV dword ptr [0x00d9f608]"
+],
+[
+"006a2456",
+"CLIENT_FPS_INT_30",
+"DIV dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006a536c",
+"name": "FUN_006a536c",
+"refs": [
+[
+"006a5449",
+"INIT_ltr@0xde4848",
+"MOV EAX,[0x00de4848]"
+]
+]
+},
+{
+"entry": "006a5723",
+"name": "FUN_006a5723",
+"refs": [
+[
+"006a5795",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+],
+[
+"006a5901",
+"CLIENT_FPS_INT_30",
+"FIDIV dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006a6aad",
+"name": "FUN_006a6aad",
+"refs": [
+[
+"006a713a",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006a9807",
+"name": "FUN_006a9807",
+"refs": [
+[
+"006a991e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"006a992f",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"006a993d",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "006af269",
+"name": "FUN_006af269",
+"refs": [
+[
+"006af348",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "006b3360",
+"name": "FUN_006b3360",
+"refs": [
+[
+"006b336e",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006b3fd7",
+"name": "FUN_006b3fd7",
+"refs": [
+[
+"006b3fe3",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006b4779",
+"name": "FUN_006b4779",
+"refs": [
+[
+"006b4794",
+"LTR_INT_5",
+"IMUL EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "006b47c8",
+"name": "FUN_006b47c8",
+"refs": [
+[
+"006b47cd",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "006bf96d",
+"name": "FUN_006bf96d",
+"refs": [
+[
+"006bfa17",
+"F_0.0333_s_per_client",
+"MULSS XMM0,dword ptr [0x00d9f62c]"
+],
+[
+"006bfa5e",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006c7344",
+"name": "FUN_006c7344",
+"refs": [
+[
+"006c7364",
+"INIT_ltr@0xde4a0c",
+"CMP ECX,dword ptr [0x00de4a0c]"
+]
+]
+},
+{
+"entry": "006c7677",
+"name": "FUN_006c7677",
+"refs": [
+[
+"006c76d0",
+"F_0.2_s_per_logic",
+"FMUL dword ptr [0x00d9f61c]"
+],
+[
+"006c7729",
+"F_0.2_s_per_logic",
+"FMUL dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "006c9d99",
+"name": "FUN_006c9d99",
+"refs": [
+[
+"006c9e45",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+],
+[
+"006c9e5d",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "006c9e7a",
+"name": "FUN_006c9e7a",
+"refs": [
+[
+"006c9f26",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+],
+[
+"006c9f3e",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "006d3dac",
+"name": "FUN_006d3dac",
+"refs": [
+[
+"006d3dae",
+"CLIENT_FPS_INT_30",
+"MOV ECX,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006d3dce",
+"name": "FUN_006d3dce",
+"refs": [
+[
+"006d3dd6",
+"CLIENT_FPS_INT_30",
+"MOV ECX,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006d455f",
+"name": "FUN_006d455f",
+"refs": [
+[
+"006d456c",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006d47a5",
+"name": "FUN_006d47a5",
+"refs": [
+[
+"006d47b4",
+"CLIENT_FPS_INT_30",
+"CVTSI2SS XMM0,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006d8e0f",
+"name": "FUN_006d8e0f",
+"refs": [
+[
+"006d8e96",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "006d93eb",
+"name": "FUN_006d93eb",
+"refs": [
+[
+"006d946f",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+],
+[
+"006d94a8",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006d9b4d",
+"name": "FUN_006d9b4d",
+"refs": [
+[
+"006d9b75",
+"CLIENT_FPS_INT_30",
+"MOV ECX,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "006f0fd5",
+"name": "FUN_006f0fd5",
+"refs": [
+[
+"006f0fdb",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"006f10a4",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "006f2364",
+"name": "FUN_006f2364",
+"refs": [
+[
+"006f246e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "006ffbef",
+"name": "FUN_006ffbef",
+"refs": [
+[
+"006ffc6b",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"006ffc78",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0071c3a1",
+"name": "FUN_0071c3a1",
+"refs": [
+[
+"0071c406",
+"LTR_INT_5",
+"MOV EDI,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00732926",
+"name": "FUN_00732926",
+"refs": [
+[
+"0073297a",
+"F_0.03_client_per_ms",
+"FLD dword ptr [0x00d9f624]"
+],
+[
+"00732b4f",
+"F_0.0333_s_per_client",
+"FLD dword ptr [0x00d9f62c]"
+]
+]
+},
+{
+"entry": "0073a403",
+"name": "FUN_0073a403",
+"refs": [
+[
+"0073a418",
+"F_0.005_per_ms_logic",
+"FLD dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "0073a429",
+"name": "FUN_0073a429",
+"refs": [
+[
+"0073a450",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "0073a46f",
+"name": "FUN_0073a46f",
+"refs": [
+[
+"0073a496",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "0073a74b",
+"name": "FUN_0073a74b",
+"refs": [
+[
+"0073a817",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+],
+[
+"0073a86a",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+],
+[
+"0073a8bd",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+],
+[
+"0073a910",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+],
+[
+"0073a960",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "0073b071",
+"name": "FUN_0073b071",
+"refs": [
+[
+"0073b09c",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "0073c39e",
+"name": "FUN_0073c39e",
+"refs": [
+[
+"0073c59e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0073c5d0",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0073fb7a",
+"name": "FUN_0073fb7a",
+"refs": [
+[
+"0073feef",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0074025f",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0074027d",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0074168e",
+"name": "FUN_0074168e",
+"refs": [
+[
+"007416ea",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00741e38",
+"name": "FUN_00741e38",
+"refs": [
+[
+"00741f69",
+"LTR_INT_5",
+"CMP ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00742271",
+"name": "FUN_00742271",
+"refs": [
+[
+"00742326",
+"LTR_INT_5",
+"CMP EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00743bd2",
+"name": "FUN_00743bd2",
+"refs": [
+[
+"00743be0",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00743d0f",
+"name": "FUN_00743d0f",
+"refs": [
+[
+"00743d30",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0074697a",
+"name": "FUN_0074697a",
+"refs": [
+[
+"00746a73",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00746a99",
+"name": "FUN_00746a99",
+"refs": [
+[
+"00746aec",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"00746bff",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"00746cee",
+"LTR_INT_5",
+"CMP EDX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00746db6",
+"name": "FUN_00746db6",
+"refs": [
+[
+"00746ed3",
+"LTR_INT_5",
+"CMP EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007471cf",
+"name": "FUN_007471cf",
+"refs": [
+[
+"00747260",
+"LTR_INT_5",
+"CMP EAX,dword ptr [0x00d9f608]"
+],
+[
+"00747517",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00747ef4",
+"name": "FUN_00747ef4",
+"refs": [
+[
+"00747f4e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"00748071",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"00748263",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "007489b6",
+"name": "FUN_007489b6",
+"refs": [
+[
+"00748a47",
+"INIT_ltr@0xde784c",
+"PUSH dword ptr [0x00de784c]"
+]
+]
+},
+{
+"entry": "00748e46",
+"name": "FUN_00748e46",
+"refs": [
+[
+"00749129",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"007493b9",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00749a3e",
+"name": "FUN_00749a3e",
+"refs": [
+[
+"00749bb4",
+"LTR_INT_5",
+"CMP EDX,dword ptr [0x00d9f608]"
+],
+[
+"00749cab",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00749d46",
+"name": "FUN_00749d46",
+"refs": [
+[
+"00749f97",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0074a594",
+"name": "FUN_0074a594",
+"refs": [
+[
+"0074a64c",
+"LTR_INT_5",
+"CMP ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0074acad",
+"name": "FUN_0074acad",
+"refs": [
+[
+"0074ad43",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0074b1d6",
+"name": "FUN_0074b1d6",
+"refs": [
+[
+"0074b6c4",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0074b6df",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0074d46d",
+"name": "FUN_0074d46d",
+"refs": [
+[
+"0074d489",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0074e6ce",
+"name": "FUN_0074e6ce",
+"refs": [
+[
+"0074e76d",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0074e848",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"0074ea25",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"0074eac1",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0074eb5c",
+"name": "FUN_0074eb5c",
+"refs": [
+[
+"0074ec20",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0074ed8e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00751f01",
+"name": "FUN_00751f01",
+"refs": [
+[
+"00751fc5",
+"LTR_INT_5",
+"CMP EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007553ab",
+"name": "FUN_007553ab",
+"refs": [
+[
+"00755432",
+"INIT_ltr@0xde784c",
+"MOV EAX,[0x00de784c]"
+]
+]
+},
+{
+"entry": "00755798",
+"name": "FUN_00755798",
+"refs": [
+[
+"007559ad",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"00755a06",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00759a6c",
+"name": "FUN_00759a6c",
+"refs": [
+[
+"00759afd",
+"F_200_ms_per_logic",
+"FDIV dword ptr [0x00d9f614]"
+]
+]
+},
+{
+"entry": "00759b84",
+"name": "FUN_00759b84",
+"refs": [
+[
+"00759c15",
+"F_200_ms_per_logic",
+"FDIV dword ptr [0x00d9f614]"
+]
+]
+},
+{
+"entry": "007651b1",
+"name": "FUN_007651b1",
+"refs": [
+[
+"0076523b",
+"F_0.03_client_per_ms",
+"FLD dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "0076cb71",
+"name": "FUN_0076cb71",
+"refs": [
+[
+"0076cbdb",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00771f49",
+"name": "FUN_00771f49",
+"refs": [
+[
+"00772016",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00774897",
+"name": "FUN_00774897",
+"refs": [
+[
+"00774ce0",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007779e3",
+"name": "FUN_007779e3",
+"refs": [
+[
+"00777ada",
+"F_0.2_s_per_logic",
+"FMUL dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "00779a3d",
+"name": "FUN_00779a3d",
+"refs": [
+[
+"0077b68d",
+"LTR_INT_5",
+"ADD EAX,dword ptr [0x00d9f608]"
+],
+[
+"0077be6e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00792559",
+"name": "FUN_00792559",
+"refs": [
+[
+"007925eb",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"007925f4",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"007925ff",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00792dbd",
+"name": "FUN_00792dbd",
+"refs": [
+[
+"00792e95",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "007966bb",
+"name": "FUN_007966bb",
+"refs": [
+[
+"007967b9",
+"INIT_ltr@0xde820c",
+"FLD dword ptr [0x00de820c]"
+]
+]
+},
+{
+"entry": "007987ee",
+"name": "FUN_007987ee",
+"refs": [
+[
+"00798af0",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "00799acb",
+"name": "FUN_00799acb",
+"refs": [
+[
+"00799ae6",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0079cb47",
+"name": "FUN_0079cb47",
+"refs": [
+[
+"0079cb70",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "0079ccf2",
+"name": "FUN_0079ccf2",
+"refs": [
+[
+"0079cf57",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+],
+[
+"0079d035",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+],
+[
+"0079d0d4",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0079dc0c",
+"name": "FUN_0079dc0c",
+"refs": [
+[
+"0079dc20",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0079dc27",
+"name": "FUN_0079dc27",
+"refs": [
+[
+"0079dc2f",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0079fe73",
+"name": "FUN_0079fe73",
+"refs": [
+[
+"0079fe88",
+"LTR_INT_5",
+"IMUL EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007a267d",
+"name": "FUN_007a267d",
+"refs": [
+[
+"007a283e",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007a2c96",
+"name": "FUN_007a2c96",
+"refs": [
+[
+"007a3734",
+"LTR_INT_5",
+"IMUL EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007a3c49",
+"name": "FUN_007a3c49",
+"refs": [
+[
+"007a3c9c",
+"LTR_INT_5",
+"MOV EDI,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007b10b4",
+"name": "FUN_007b10b4",
+"refs": [
+[
+"007b1102",
+"CLIENT_FPS_INT_30",
+"IMUL EAX,dword ptr [0x00d9f60c]"
+],
+[
+"007b1160",
+"CLIENT_FPS_INT_30",
+"IMUL EAX,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "007b12f4",
+"name": "FUN_007b12f4",
+"refs": [
+[
+"007b12fe",
+"CLIENT_FPS_INT_30",
+"IMUL EAX,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "007b13a5",
+"name": "FUN_007b13a5",
+"refs": [
+[
+"007b140b",
+"CLIENT_FPS_INT_30",
+"IMUL EAX,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "007b1f5b",
+"name": "FUN_007b1f5b",
+"refs": [
+[
+"007b1fb5",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "007bbfb2",
+"name": "FUN_007bbfb2",
+"refs": [
+[
+"007bbfc8",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+]
+]
+},
+{
+"entry": "007bc013",
+"name": "FUN_007bc013",
+"refs": [
+[
+"007bc03e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"007bc049",
+"INIT_half@0xde87dc",
+"IDIV dword ptr [0x00de87dc]"
+]
+]
+},
+{
+"entry": "007bd477",
+"name": "FUN_007bd477",
+"refs": [
+[
+"007bd495",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007bd582",
+"name": "FUN_007bd582",
+"refs": [
+[
+"007bd59a",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007bdd7a",
+"name": "FUN_007bdd7a",
+"refs": [
+[
+"007bdd7a",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+]
+]
+},
+{
+"entry": "007bdd97",
+"name": "FUN_007bdd97",
+"refs": [
+[
+"007bdd97",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+]
+]
+},
+{
+"entry": "007c083e",
+"name": "FUN_007c083e",
+"refs": [
+[
+"007c098b",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c09e3",
+"name": "FUN_007c09e3",
+"refs": [
+[
+"007c0a40",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"007c0a4a",
+"INIT_half@0xde87dc",
+"IDIV dword ptr [0x00de87dc]"
+]
+]
+},
+{
+"entry": "007c1704",
+"name": "FUN_007c1704",
+"refs": [
+[
+"007c1766",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c299d",
+"name": "FUN_007c299d",
+"refs": [
+[
+"007c29dd",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c495b",
+"name": "FUN_007c495b",
+"refs": [
+[
+"007c499c",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c49bc",
+"name": "FUN_007c49bc",
+"refs": [
+[
+"007c4a14",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c4a34",
+"name": "FUN_007c4a34",
+"refs": [
+[
+"007c4a79",
+"LTR_INT_5",
+"MOV ESI,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c6404",
+"name": "FUN_007c6404",
+"refs": [
+[
+"007c645c",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c649a",
+"name": "FUN_007c649a",
+"refs": [
+[
+"007c6502",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c8e49",
+"name": "FUN_007c8e49",
+"refs": [
+[
+"007c8e9e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c9d7d",
+"name": "FUN_007c9d7d",
+"refs": [
+[
+"007c9ddc",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c9df6",
+"name": "FUN_007c9df6",
+"refs": [
+[
+"007c9e2d",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "007c9e48",
+"name": "FUN_007c9e48",
+"refs": [
+[
+"007c9ecf",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "007cafa5",
+"name": "FUN_007cafa5",
+"refs": [
+[
+"007cdf02",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007e4866",
+"name": "FUN_007e4866",
+"refs": [
+[
+"007e487c",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007e48ed",
+"name": "FUN_007e48ed",
+"refs": [
+[
+"007e4903",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007e5640",
+"name": "FUN_007e5640",
+"refs": [
+[
+"007e5661",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007e6017",
+"name": "FUN_007e6017",
+"refs": [
+[
+"007e601c",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007e64cd",
+"name": "FUN_007e64cd",
+"refs": [
+[
+"007e64de",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007e8954",
+"name": "FUN_007e8954",
+"refs": [
+[
+"007e8998",
+"F_0.005_per_ms_logic",
+"FLD dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "007e9c33",
+"name": "FUN_007e9c33",
+"refs": [
+[
+"007e9c5d",
+"LTR_INT_5",
+"MOV ESI,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007eaf48",
+"name": "FUN_007eaf48",
+"refs": [
+[
+"007eafae",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007eb046",
+"name": "FUN_007eb046",
+"refs": [
+[
+"007eb0f3",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007ee166",
+"name": "FUN_007ee166",
+"refs": [
+[
+"007ee17f",
+"LTR_INT_5",
+"IMUL EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "007ef198",
+"name": "FUN_007ef198",
+"refs": [
+[
+"007ef24b",
+"F_0.2_s_per_logic",
+"MOVSS XMM0,dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "007fa0a6",
+"name": "FUN_007fa0a6",
+"refs": [
+[
+"007fa501",
+"F_5_logic_per_s",
+"FMUL dword ptr [0x00d9f618]"
+]
+]
+},
+{
+"entry": "007fb29c",
+"name": "FUN_007fb29c",
+"refs": [
+[
+"007fb2ce",
+"CLIENT_FPS_INT_30",
+"IMUL EAX,dword ptr [0x00d9f60c]"
+],
+[
+"007fb334",
+"CLIENT_FPS_INT_30",
+"IMUL EAX,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "007fea48",
+"name": "FUN_007fea48",
+"refs": [
+[
+"007fea4b",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "008050d3",
+"name": "FUN_008050d3",
+"refs": [
+[
+"00805192",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "00808f53",
+"name": "FUN_00808f53",
+"refs": [
+[
+"00808f81",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0080ace3",
+"name": "FUN_0080ace3",
+"refs": [
+[
+"0080b08e",
+"LTR_INT_5",
+"FIMUL dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0080f475",
+"name": "FUN_0080f475",
+"refs": [
+[
+"0080f47f",
+"F_5_logic_per_s",
+"MULSS XMM0,dword ptr [0x00d9f618]"
+]
+]
+},
+{
+"entry": "0080fe19",
+"name": "FUN_0080fe19",
+"refs": [
+[
+"0080fe33",
+"F_5_logic_per_s",
+"MULSS XMM0,dword ptr [0x00d9f618]"
+]
+]
+},
+{
+"entry": "00819e12",
+"name": "FUN_00819e12",
+"refs": [
+[
+"00819f0e",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0081a0a7",
+"name": "FUN_0081a0a7",
+"refs": [
+[
+"0081a0b2",
+"LTR_INT_5",
+"IMUL EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0081a11e",
+"name": "FUN_0081a11e",
+"refs": [
+[
+"0081a16d",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+],
+[
+"0081a1be",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0081aa85",
+"name": "FUN_0081aa85",
+"refs": [
+[
+"0081aadc",
+"LTR_INT_5",
+"FIDIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0081be85",
+"name": "FUN_0081be85",
+"refs": [
+[
+"0081bea6",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00821319",
+"name": "FUN_00821319",
+"refs": [
+[
+"008213cb",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008251fa",
+"name": "FUN_008251fa",
+"refs": [
+[
+"0082522b",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00838d3a",
+"name": "FUN_00838d3a",
+"refs": [
+[
+"00838d60",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+]
+]
+},
+{
+"entry": "0083ab1f",
+"name": "FUN_0083ab1f",
+"refs": [
+[
+"0083ab37",
+"LTR_INT_5",
+"ADD EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0083c29e",
+"name": "FUN_0083c29e",
+"refs": [
+[
+"0083ce55",
+"LTR_INT_5",
+"CMP ECX,dword ptr [0x00d9f608]"
+],
+[
+"0083cfe2",
+"LTR_INT_5",
+"CMP EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0085123f",
+"name": "FUN_0085123f",
+"refs": [
+[
+"008512ab",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0085266d",
+"name": "FUN_0085266d",
+"refs": [
+[
+"00852716",
+"INIT_ltr@0xde8e0c",
+"PUSH dword ptr [0x00de8e0c]"
+]
+]
+},
+{
+"entry": "008530ba",
+"name": "FUN_008530ba",
+"refs": [
+[
+"00853430",
+"F_0.005_per_ms_logic",
+"FMUL dword ptr [0x00d9f610]"
+],
+[
+"008531e6",
+"INIT_ltr@0xde8e0c",
+"PUSH dword ptr [0x00de8e0c]"
+]
+]
+},
+{
+"entry": "0085393b",
+"name": "FUN_0085393b",
+"refs": [
+[
+"00853950",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00855533",
+"name": "FUN_00855533",
+"refs": [
+[
+"00855594",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+],
+[
+"008555d0",
+"LTR_INT_5",
+"ADD EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008558c0",
+"name": "FUN_008558c0",
+"refs": [
+[
+"0085592e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008574ae",
+"name": "FUN_008574ae",
+"refs": [
+[
+"008574b3",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00857e77",
+"name": "FUN_00857e77",
+"refs": [
+[
+"008580c4",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0085c177",
+"name": "FUN_0085c177",
+"refs": [
+[
+"0085c1bb",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0085d216",
+"name": "FUN_0085d216",
+"refs": [
+[
+"0085d232",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0085d9d1",
+"name": "FUN_0085d9d1",
+"refs": [
+[
+"0085dac2",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+],
+[
+"0085daeb",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"0085de0b",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0085df88",
+"name": "FUN_0085df88",
+"refs": [
+[
+"0085e18d",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0085ebee",
+"name": "FUN_0085ebee",
+"refs": [
+[
+"0085eed9",
+"F_0.03_client_per_ms",
+"FMUL dword ptr [0x00d9f624]"
+],
+[
+"0085eef5",
+"F_0.03_client_per_ms",
+"FMUL dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "00860e93",
+"name": "FUN_00860e93",
+"refs": [
+[
+"00860fe0",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"00860fee",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00862b07",
+"name": "FUN_00862b07",
+"refs": [
+[
+"00862c2e",
+"F_0.03_client_per_ms",
+"FMUL dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "008633a4",
+"name": "FUN_008633a4",
+"refs": [
+[
+"008634ed",
+"INIT_ltr@0xde9008",
+"MOV EAX,[0x00de9008]"
+]
+]
+},
+{
+"entry": "0086404d",
+"name": "FUN_0086404d",
+"refs": [
+[
+"008640d6",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008682d9",
+"name": "FUN_008682d9",
+"refs": [
+[
+"0086845e",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00868759",
+"name": "FUN_00868759",
+"refs": [
+[
+"00868933",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0086a943",
+"name": "FUN_0086a943",
+"refs": [
+[
+"0086ab63",
+"F_0.03_client_per_ms",
+"FLD dword ptr [0x00d9f624]"
+],
+[
+"0086aba1",
+"F_0.03_client_per_ms",
+"FLD dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "0086abdc",
+"name": "FUN_0086abdc",
+"refs": [
+[
+"0086ae59",
+"F_0.03_client_per_ms",
+"FLD dword ptr [0x00d9f624]"
+],
+[
+"0086ae87",
+"F_0.03_client_per_ms",
+"FLD dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "0086b86d",
+"name": "FUN_0086b86d",
+"refs": [
+[
+"0086b91a",
+"F_0.2_s_per_logic",
+"FMUL dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "0086bdd3",
+"name": "FUN_0086bdd3",
+"refs": [
+[
+"0086beab",
+"LTR_INT_5",
+"MOV ESI,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0086d259",
+"name": "FUN_0086d259",
+"refs": [
+[
+"0086d2a0",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008719e4",
+"name": "FUN_008719e4",
+"refs": [
+[
+"00871a53",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00872efc",
+"name": "FUN_00872efc",
+"refs": [
+[
+"00872f6e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"008730b4",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+],
+[
+"0087313f",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00878ee5",
+"name": "FUN_00878ee5",
+"refs": [
+[
+"00878f8d",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"00878f9d",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"008790ac",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0087c8df",
+"name": "FUN_0087c8df",
+"refs": [
+[
+"0087c944",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0087d649",
+"name": "FUN_0087d649",
+"refs": [
+[
+"0087d65c",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0087d9f6",
+"name": "FUN_0087d9f6",
+"refs": [
+[
+"0087d9fc",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0087ee53",
+"name": "FUN_0087ee53",
+"refs": [
+[
+"0087ef2a",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0087f7b4",
+"name": "FUN_0087f7b4",
+"refs": [
+[
+"0087f901",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"0087fb48",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0087ffc7",
+"name": "FUN_0087ffc7",
+"refs": [
+[
+"00880080",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008807ca",
+"name": "FUN_008807ca",
+"refs": [
+[
+"0088090a",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"00880a23",
+"LTR_INT_5",
+"ADD EAX,dword ptr [0x00d9f608]"
+],
+[
+"00880b3c",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00881298",
+"name": "FUN_00881298",
+"refs": [
+[
+"0088132a",
+"LTR_INT_5",
+"ADD EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00882cb2",
+"name": "FUN_00882cb2",
+"refs": [
+[
+"00882ce2",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00884cf1",
+"name": "FUN_00884cf1",
+"refs": [
+[
+"00884da3",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008868a6",
+"name": "FUN_008868a6",
+"refs": [
+[
+"00886ba8",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00887458",
+"name": "FUN_00887458",
+"refs": [
+[
+"00887484",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00887bab",
+"name": "FUN_00887bab",
+"refs": [
+[
+"00887c46",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00889aaf",
+"name": "FUN_00889aaf",
+"refs": [
+[
+"00889c3d",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "0088d993",
+"name": "FUN_0088d993",
+"refs": [
+[
+"0088dc5e",
+"LTR_INT_5",
+"FIDIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00890738",
+"name": "FUN_00890738",
+"refs": [
+[
+"00890a62",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00890bbb",
+"name": "FUN_00890bbb",
+"refs": [
+[
+"00890bf6",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00893871",
+"name": "FUN_00893871",
+"refs": [
+[
+"00893883",
+"INIT_ltr@0xde93d4",
+"MOV EAX,[0x00de93d4]"
+]
+]
+},
+{
+"entry": "00895741",
+"name": "FUN_00895741",
+"refs": [
+[
+"0089575d",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00897987",
+"name": "FUN_00897987",
+"refs": [
+[
+"00897a77",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00898a2d",
+"name": "FUN_00898a2d",
+"refs": [
+[
+"00898a3d",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00899a96",
+"name": "FUN_00899a96",
+"refs": [
+[
+"00899ab5",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00899e8c",
+"name": "FUN_00899e8c",
+"refs": [
+[
+"00899eb4",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0089a765",
+"name": "FUN_0089a765",
+"refs": [
+[
+"0089a795",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"0089a7a1",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"0089a7ad",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"0089a7b9",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0089d647",
+"name": "FUN_0089d647",
+"refs": [
+[
+"0089d6ea",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0089e169",
+"name": "FUN_0089e169",
+"refs": [
+[
+"0089e380",
+"LTR_INT_5",
+"SUB EBX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0089e4da",
+"name": "FUN_0089e4da",
+"refs": [
+[
+"0089e53c",
+"LTR_INT_5",
+"PUSH dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008a1b9f",
+"name": "FUN_008a1b9f",
+"refs": [
+[
+"008a2a75",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+],
+[
+"008a2c1c",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"008a2c2f",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"008a2d40",
+"CLIENT_FPS_INT_30",
+"FILD dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "008a52b2",
+"name": "FUN_008a52b2",
+"refs": [
+[
+"008a52bb",
+"INIT_ltr@0xde95fc",
+"MOV EAX,[0x00de95fc]"
+]
+]
+},
+{
+"entry": "008a58fa",
+"name": "FUN_008a58fa",
+"refs": [
+[
+"008a5a5b",
+"LTR_INT_5",
+"IMUL EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008a5b75",
+"name": "FUN_008a5b75",
+"refs": [
+[
+"008a5bf6",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008a5d00",
+"name": "FUN_008a5d00",
+"refs": [
+[
+"008a6080",
+"F_0.03_client_per_ms",
+"FMUL dword ptr [0x00d9f624]"
+],
+[
+"008a60c0",
+"F_0.03_client_per_ms",
+"FMUL dword ptr [0x00d9f624]"
+],
+[
+"008a5d23",
+"INIT_ltr@0xde95fc",
+"MOV EAX,[0x00de95fc]"
+]
+]
+},
+{
+"entry": "008aeba6",
+"name": "FUN_008aeba6",
+"refs": [
+[
+"008aec6a",
+"LTR_INT_5",
+"MOV EBP,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008af542",
+"name": "FUN_008af542",
+"refs": [
+[
+"008af565",
+"F_0.005_per_ms_logic",
+"FLD dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "008af912",
+"name": "FUN_008af912",
+"refs": [
+[
+"008af9f3",
+"LTR_INT_5",
+"FIDIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008b36b2",
+"name": "FUN_008b36b2",
+"refs": [
+[
+"008b371c",
+"F_0.005_per_ms_logic",
+"MOVSS XMM0,dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "008b4eb1",
+"name": "FUN_008b4eb1",
+"refs": [
+[
+"008b4ec9",
+"F_0.005_per_ms_logic",
+"FLD dword ptr [0x00d9f610]"
+]
+]
+},
+{
+"entry": "008b5738",
+"name": "FUN_008b5738",
+"refs": [
+[
+"008b5dba",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008b65a2",
+"name": "FUN_008b65a2",
+"refs": [
+[
+"008b65d3",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008b8464",
+"name": "FUN_008b8464",
+"refs": [
+[
+"008b864c",
+"F_0.03_client_per_ms",
+"FMUL dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "008b8f40",
+"name": "FUN_008b8f40",
+"refs": [
+[
+"008b8f8c",
+"CLIENT_FPS_INT_30",
+"CVTSI2SS XMM3,dword ptr [0x00d9f60c]"
+],
+[
+"008b8fbc",
+"CLIENT_FPS_INT_30",
+"CVTSI2SS XMM0,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "008ba64c",
+"name": "FUN_008ba64c",
+"refs": [
+[
+"008ba6c1",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008bc9b0",
+"name": "FUN_008bc9b0",
+"refs": [
+[
+"008bc9d3",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"008bcafb",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008bcc06",
+"name": "FUN_008bcc06",
+"refs": [
+[
+"008bcc4a",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008bf4f0",
+"name": "FUN_008bf4f0",
+"refs": [
+[
+"008bf51e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008c01d1",
+"name": "FUN_008c01d1",
+"refs": [
+[
+"008c02f4",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+],
+[
+"008c0310",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"008c0321",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008ca978",
+"name": "FUN_008ca978",
+"refs": [
+[
+"008ca9c8",
+"LTR_INT_5",
+"CMP EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008cdce9",
+"name": "FUN_008cdce9",
+"refs": [
+[
+"008cdd67",
+"F_0.2_s_per_logic",
+"FMUL dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "008d0bf3",
+"name": "FUN_008d0bf3",
+"refs": [
+[
+"008d0c6b",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008d2adb",
+"name": "FUN_008d2adb",
+"refs": [
+[
+"008d2ae5",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"008d2aef",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008dc182",
+"name": "FUN_008dc182",
+"refs": [
+[
+"008dc1f0",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008e302a",
+"name": "FUN_008e302a",
+"refs": [
+[
+"008e314e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"008e3162",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008e38dd",
+"name": "FUN_008e38dd",
+"refs": [
+[
+"008e3a1b",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008e9db2",
+"name": "FUN_008e9db2",
+"refs": [
+[
+"008e9e1b",
+"CLIENT_FPS_INT_30",
+"MOV ECX,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "008ea5d8",
+"name": "FUN_008ea5d8",
+"refs": [
+[
+"008ea686",
+"CLIENT_FPS_INT_30",
+"MOV ECX,dword ptr [0x00d9f60c]"
+],
+[
+"008ea697",
+"CLIENT_FPS_INT_30",
+"SUB EAX,dword ptr [0x00d9f60c]"
+],
+[
+"008ea896",
+"CLIENT_FPS_INT_30",
+"ADD EBX,dword ptr [0x00d9f60c]"
+]
+]
+},
+{
+"entry": "008ee765",
+"name": "FUN_008ee765",
+"refs": [
+[
+"008ee7c0",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+],
+[
+"008ee82f",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008f0502",
+"name": "FUN_008f0502",
+"refs": [
+[
+"008f05ef",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008f0783",
+"name": "FUN_008f0783",
+"refs": [
+[
+"008f0855",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008f1725",
+"name": "FUN_008f1725",
+"refs": [
+[
+"008f173c",
+"LTR_INT_5",
+"CVTSI2SS XMM1,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008f2a12",
+"name": "FUN_008f2a12",
+"refs": [
+[
+"008f2a17",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008f3efe",
+"name": "FUN_008f3efe",
+"refs": [
+[
+"008f3f25",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"008f3f51",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008f457d",
+"name": "FUN_008f457d",
+"refs": [
+[
+"008f4800",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008f7949",
+"name": "FUN_008f7949",
+"refs": [
+[
+"008f796e",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008f805d",
+"name": "FUN_008f805d",
+"refs": [
+[
+"008f8223",
+"LTR_INT_5",
+"IMUL EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "008f8f68",
+"name": "FUN_008f8f68",
+"refs": [
+[
+"008f8f89",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008f96b6",
+"name": "FUN_008f96b6",
+"refs": [
+[
+"008f96f7",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "008fa451",
+"name": "FUN_008fa451",
+"refs": [
+[
+"008fa45e",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0090b1f4",
+"name": "FUN_0090b1f4",
+"refs": [
+[
+"0090b23d",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "00910070",
+"name": "FUN_00910070",
+"refs": [
+[
+"009100f3",
+"F_0.2_s_per_logic",
+"MULSS XMM0,dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "009257f2",
+"name": "FUN_009257f2",
+"refs": [
+[
+"00925c22",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0092ba91",
+"name": "FUN_0092ba91",
+"refs": [
+[
+"0092bab3",
+"F_0.03_client_per_ms",
+"FMUL dword ptr [0x00d9f624]"
+]
+]
+},
+{
+"entry": "00944cc0",
+"name": "FUN_00944cc0",
+"refs": [
+[
+"00944d21",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0094a048",
+"name": "FUN_0094a048",
+"refs": [
+[
+"0094a154",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0094a26e",
+"LTR_INT_5",
+"ADD EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0094a986",
+"name": "FUN_0094a986",
+"refs": [
+[
+"0094aa68",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0094c310",
+"name": "FUN_0094c310",
+"refs": [
+[
+"0094c3fc",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0097d035",
+"name": "FUN_0097d035",
+"refs": [
+[
+"0097d07c",
+"INIT_ltr@0xdebd74",
+"CMP EAX,dword ptr [0x00debd74]"
+]
+]
+},
+{
+"entry": "0097dd6b",
+"name": "FUN_0097dd6b",
+"refs": [
+[
+"0097ddf4",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0098bdde",
+"name": "FUN_0098bdde",
+"refs": [
+[
+"0098c35e",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0098c367",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0098c6a8",
+"name": "FUN_0098c6a8",
+"refs": [
+[
+"0098c949",
+"LTR_INT_5",
+"ADD EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0098d478",
+"name": "FUN_0098d478",
+"refs": [
+[
+"0098da69",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0098da72",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0098e3e7",
+"name": "FUN_0098e3e7",
+"refs": [
+[
+"0098e8e6",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0098ea34",
+"LTR_INT_5",
+"ADD EAX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "0098f780",
+"name": "FUN_0098f780",
+"refs": [
+[
+"0098f7d5",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0098f7df",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"0098f7e9",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "00993019",
+"name": "FUN_00993019",
+"refs": [
+[
+"00993024",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "0099eac1",
+"name": "FUN_0099eac1",
+"refs": [
+[
+"0099eafc",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+]
+]
+},
+{
+"entry": "0099eb97",
+"name": "FUN_0099eb97",
+"refs": [
+[
+"0099ec8e",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+],
+[
+"0099eca0",
+"CLIENT_FPS_INT_30",
+"MOV EAX,[0x00d9f60c]"
+]
+]
+},
+{
+"entry": "0099f313",
+"name": "FUN_0099f313",
+"refs": [
+[
+"0099f365",
+"F_0.2_s_per_logic",
+"FLD dword ptr [0x00d9f61c]"
+]
+]
+},
+{
+"entry": "0099faef",
+"name": "FUN_0099faef",
+"refs": [
+[
+"0099fb09",
+"INIT_ltr@0xdebe48",
+"CMP EAX,dword ptr [0x00debe48]"
+]
+]
+},
+{
+"entry": "009a24fc",
+"name": "FUN_009a24fc",
+"refs": [
+[
+"009a2610",
+"INIT_ltr@0xdebe5c",
+"CMP EAX,dword ptr [0x00debe5c]"
+]
+]
+},
+{
+"entry": "009a3040",
+"name": "FUN_009a3040",
+"refs": [
+[
+"009a3115",
+"INIT_ltr@0xdebe5c",
+"CMP EAX,dword ptr [0x00debe5c]"
+]
+]
+},
+{
+"entry": "009b53c6",
+"name": "FUN_009b53c6",
+"refs": [
+[
+"009b5483",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "009b565f",
+"name": "FUN_009b565f",
+"refs": [
+[
+"009b578c",
+"INIT_ltr@0xdebe8c",
+"MOV ECX,dword ptr [0x00debe8c]"
+]
+]
+},
+{
+"entry": "009b583c",
+"name": "FUN_009b583c",
+"refs": [
+[
+"009b5870",
+"INIT_ltr@0xdebe90",
+"ADD EAX,dword ptr [0x00debe90]"
+]
+]
+},
+{
+"entry": "009b67ca",
+"name": "FUN_009b67ca",
+"refs": [
+[
+"009b6bd8",
+"INIT_ltr@0xdebe9c",
+"ADD EAX,dword ptr [0x00debe9c]"
+]
+]
+},
+{
+"entry": "009b6f70",
+"name": "FUN_009b6f70",
+"refs": [
+[
+"009b7046",
+"INIT_ltr@0xdebe9c",
+"ADD ECX,dword ptr [0x00debe9c]"
+]
+]
+},
+{
+"entry": "009b7f56",
+"name": "FUN_009b7f56",
+"refs": [
+[
+"009b7fee",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "009b8e1e",
+"name": "FUN_009b8e1e",
+"refs": [
+[
+"009b8f3d",
+"INIT_ltr@0xdebec0",
+"MOV ECX,dword ptr [0x00debec0]"
+]
+]
+},
+{
+"entry": "009b9056",
+"name": "FUN_009b9056",
+"refs": [
+[
+"009b9087",
+"INIT_ltr@0xdebecc",
+"ADD EAX,dword ptr [0x00debecc]"
+]
+]
+},
+{
+"entry": "009b9e06",
+"name": "FUN_009b9e06",
+"refs": [
+[
+"009b9ead",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "009ba3c2",
+"name": "FUN_009ba3c2",
+"refs": [
+[
+"009ba469",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "009ba4ef",
+"name": "FUN_009ba4ef",
+"refs": [
+[
+"009ba60e",
+"INIT_ltr@0xdebed8",
+"MOV ECX,dword ptr [0x00debed8]"
+]
+]
+},
+{
+"entry": "009ba655",
+"name": "FUN_009ba655",
+"refs": [
+[
+"009ba686",
+"INIT_ltr@0xdebee4",
+"ADD EAX,dword ptr [0x00debee4]"
+]
+]
+},
+{
+"entry": "009baf6c",
+"name": "FUN_009baf6c",
+"refs": [
+[
+"009baff8",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+],
+[
+"009bb07c",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+},
+{
+"entry": "009bb1c4",
+"name": "FUN_009bb1c4",
+"refs": [
+[
+"009bb25e",
+"INIT_ltr@0xdebf04",
+"PUSH dword ptr [0x00debf04]"
+],
+[
+"009bb258",
+"INIT_ltr@0xdebf08",
+"PUSH dword ptr [0x00debf08]"
+]
+]
+},
+{
+"entry": "009bbfd1",
+"name": "FUN_009bbfd1",
+"refs": [
+[
+"009bc014",
+"INIT_ltr@0xdebf14",
+"PUSH dword ptr [0x00debf14]"
+],
+[
+"009bc00e",
+"INIT_ltr@0xdebf18",
+"PUSH dword ptr [0x00debf18]"
+]
+]
+},
+{
+"entry": "009c0e74",
+"name": "FUN_009c0e74",
+"refs": [
+[
+"009c0f00",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "009ce8f3",
+"name": "FUN_009ce8f3",
+"refs": [
+[
+"009ceea1",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "009cfa65",
+"name": "FUN_009cfa65",
+"refs": [
+[
+"009cfd65",
+"LTR_INT_5",
+"CVTSI2SS XMM0,dword ptr [0x00d9f608]"
+],
+[
+"009cfd9f",
+"LTR_INT_5",
+"FILD dword ptr [0x00d9f608]"
+],
+[
+"009d044a",
+"LTR_INT_5",
+"DIV dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "009e7ca3",
+"name": "FUN_009e7ca3",
+"refs": [
+[
+"009e7cb8",
+"INIT_ltr@0xdec148",
+"CMP EAX,dword ptr [0x00dec148]"
+]
+]
+},
+{
+"entry": "009e7f0f",
+"name": "FUN_009e7f0f",
+"refs": [
+[
+"009e82af",
+"LTR_INT_5",
+"MOV EDX,dword ptr [0x00d9f608]"
+],
+[
+"009e833a",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "009e880b",
+"name": "FUN_009e880b",
+"refs": [
+[
+"009e888d",
+"INIT_ltr@0xdec14c",
+"PUSH dword ptr [0x00dec14c]"
+],
+[
+"009e8887",
+"INIT_ltr@0xdec150",
+"PUSH dword ptr [0x00dec150]"
+]
+]
+},
+{
+"entry": "009e8a42",
+"name": "FUN_009e8a42",
+"refs": [
+[
+"009e8f50",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+],
+[
+"009e9034",
+"LTR_INT_5",
+"MOV ECX,dword ptr [0x00d9f608]"
+]
+]
+},
+{
+"entry": "009e9222",
+"name": "FUN_009e9222",
+"refs": [
+[
+"009e92a4",
+"INIT_ltr@0xdec160",
+"PUSH dword ptr [0x00dec160]"
+],
+[
+"009e929e",
+"INIT_ltr@0xdec164",
+"PUSH dword ptr [0x00dec164]"
+]
+]
+},
+{
+"entry": "009ed351",
+"name": "FUN_009ed351",
+"refs": [
+[
+"009ed3c8",
+"LTR_INT_5",
+"MOV EAX,[0x00d9f608]"
+]
+]
+}
+]

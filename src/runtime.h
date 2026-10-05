@@ -173,6 +173,7 @@ void FrameControlInit(const Config& cfg, bool installed);
 void PacerInit(const Config& cfg);
 bool PacerFallbackActive();           // the mode controller must not (re)enable 60 mode
 void PacerOnModeChange(bool on);
+int PacerFallbackSecondsLeft();       // 0 when no fallback is active
 
 // telemetry.cpp
 void TelemetryInit(const Config& cfg);

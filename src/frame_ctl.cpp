@@ -5,6 +5,8 @@
 #include "log.h"
 #include "runtime.h"
 
+#include <cwchar>
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -209,6 +211,50 @@ void LeaveSixty(const char* reason)
     TelemetryOnModeChange(false, reason);
 }
 
+// Current state as a prefix of the game window's title (visible in windowed mode; helps testing the hotkeys).
+void UpdateTitle(const char* block)
+{
+    static HWND window = nullptr;
+    static wchar_t original[256] = {};
+    static wchar_t shown[512] = {};
+    if ((g_renderId & 7) != 0) {
+        return;
+    }
+    HWND h = Read<HWND>(0xDD3014); // D3DPRESENT_PARAMETERS.hDeviceWindow
+    if (!h) {
+        return;
+    }
+    if (h != window) {
+        window = h;
+        GetWindowTextW(h, original, 256);
+        shown[0] = 0;
+    }
+    wchar_t status[200];
+    if (g_m60) {
+        swprintf(status, 200, L"[AotR60: 60 FPS%ls] ", g_featPresent ? L", smooth" : L"");
+    }
+    else if (int left = PacerFallbackSecondsLeft()) {
+        swprintf(status, 200, L"[AotR60: 30 FPS, performance fallback %d s] ", left);
+    }
+    else {
+        wchar_t reason[120] = L"starting";
+        if (block) {
+            size_t i = 0;
+            for (; block[i] && i < 119; ++i) {
+                reason[i] = static_cast<wchar_t>(static_cast<unsigned char>(block[i]));
+            }
+            reason[i] = 0;
+        }
+        swprintf(status, 200, L"[AotR60: 30 FPS, %ls] ", reason);
+    }
+    wchar_t title[512];
+    swprintf(title, 512, L"%ls%ls", status, original);
+    if (wcscmp(title, shown) != 0) {
+        SetWindowTextW(h, title);
+        wcscpy_s(shown, title);
+    }
+}
+
 bool HotkeyPressed(int key, bool& wasDown)
 {
     bool down = (GetAsyncKeyState(key) & 0x8000) && (GetAsyncKeyState(VK_CONTROL) & 0x8000) &&
@@ -310,6 +356,7 @@ extern "C" void __cdecl OnPreRender(uint8_t* engine)
     if (g_skipB) {
         SetIntegratorVariablesForB(true);
     }
+    UpdateTitle(startBlock);
     TelemetryOnPreRender(s);
 }
 

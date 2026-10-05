@@ -36,6 +36,8 @@ uint32_t g_windowBRenders = 0;
 uint32_t g_windowLateSkips = 0;
 int64_t g_fallbackUntil = 0;
 int g_fallbackCount = 0;
+int g_debtWindows = 0; // consecutive windows that lost more than 2 %
+int g_goodWindows = 0; // consecutive clean windows
 
 int64_t Now()
 {
@@ -100,7 +102,16 @@ void EvaluateWindow(int64_t now)
     double skipRatio = g_windowBRenders ? static_cast<double>(g_windowLateSkips) / g_windowBRenders : 0.0;
     g_pacerStats.lastDebtRatio = debtRatio;
     g_pacerStats.lastSkipRatio = skipRatio;
-    if (debtRatio > 0.003 || skipRatio > 0.10) {
+    // Only sustained overload counts. Single hitches (shader compiles, the start of a match, autosaves) lose the
+    // same time at stock 30 FPS, so they are no reason to leave 60: fall back when one window loses more than 10 %,
+    // or three windows in a row lose more than 2 %, or more than 10 % of B-render Presents had to be skipped.
+    g_debtWindows = debtRatio > 0.02 ? g_debtWindows + 1 : 0;
+    g_goodWindows = (debtRatio > 0.02 || skipRatio > 0.05) ? 0 : g_goodWindows + 1;
+    if (g_goodWindows >= 60) {
+        g_fallbackCount = 0; // five clean minutes: start the backoff from 30 s again
+    }
+    if (debtRatio > 0.10 || g_debtWindows >= 3 || skipRatio > 0.10) {
+        g_debtWindows = 0;
         int backoff = 30 << (g_fallbackCount < 4 ? g_fallbackCount : 4); // 30 s .. 8 min
         ++g_fallbackCount;
         g_fallbackUntil = now + backoff * g_freq;
@@ -138,6 +149,15 @@ void PacerOnModeChange(bool)
     g_windowDebt = 0;
     g_windowBRenders = 0;
     g_windowLateSkips = 0;
+    g_debtWindows = 0;
+}
+
+int PacerFallbackSecondsLeft()
+{
+    if (!PacerFallbackActive()) {
+        return 0;
+    }
+    return static_cast<int>((g_fallbackUntil - Now()) / g_freq) + 1;
 }
 
 // Stock frame time P from the same inputs as the stock limiter (0x63A19C..0x63A1AD): fps limit * net speed

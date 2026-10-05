@@ -108,6 +108,19 @@ void STUB_LW_ICON_SNAP();
 void STUB_LW_SCENE_PRESENT();
 void STUB_LW6_CAM_REC();
 void STUB_LW6_CAM_SCENE_END();
+void CP_MOD_STUB();
+void CP_PATH_CAVE();
+void CP_PLAYER_STUB();
+void CP_SKAI_STUB();
+void CP_SCRIPT_STUB();
+void CP_OBJ1_STUB();
+void CP_PART_STUB();
+void CP_COLL_STUB();
+void STEP_DRAIN_STUB();
+void PUMP_NET_CAVE();
+void TCL_NET_CAVE();
+void BEGIN_RENDER_NET_CAVE();
+void SHUTDOWN_CAVE();
 }
 
 namespace {
@@ -244,6 +257,20 @@ const Symbol kSymbols[] = {
     SYM(STUB_LW_SCENE_PRESENT),
     SYM(STUB_LW6_CAM_REC),
     SYM(STUB_LW6_CAM_SCENE_END),
+    // split present
+    SYM(CP_MOD_STUB),
+    SYM(CP_PATH_CAVE),
+    SYM(CP_PLAYER_STUB),
+    SYM(CP_SKAI_STUB),
+    SYM(CP_SCRIPT_STUB),
+    SYM(CP_OBJ1_STUB),
+    SYM(CP_PART_STUB),
+    SYM(CP_COLL_STUB),
+    SYM(STEP_DRAIN_STUB),
+    SYM(PUMP_NET_CAVE),
+    SYM(TCL_NET_CAVE),
+    SYM(BEGIN_RENDER_NET_CAVE),
+    SYM(SHUTDOWN_CAVE),
 };
 
 #undef SYM

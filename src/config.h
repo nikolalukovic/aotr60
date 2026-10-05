@@ -19,6 +19,10 @@ struct Config {
     bool unitInterpolation = true;   // phase 2b: units drawn at half-steps on the inserted frames
     bool cameraInterpolation = true; // phase 3: camera picture interpolated on the inserted frames
     bool presentPacing = true;       // without vsync: space the presented frames evenly
+    int splitPresent = 1;            // heavy logic steps: 0 off, 1 on, 2 profile checkpoints, 3 stress (testing)
+    bool splitPresentEarly = true;   // start a predicted-heavy Y iteration early (with split present)
+    bool repayProportional = true;   // repay owed pacing time faster when more is owed
+    bool splitPresentNative = false; // allow split present with the system d3d9.dll (not DXVK)
 };
 
 // Parses "Key = Value" lines; '#' or ';' start comments, [sections] and unknown keys are ignored.

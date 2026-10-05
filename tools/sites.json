@@ -5094,6 +5094,403 @@
    "evidence": "0x49B783..0x49B798 disassembly; the drawFrame LW tail draws only UI/mouse/overlays before Present and SCENE_RESTORE 0x44A271.",
    "risks": "A UI overlay projecting with the LW camera (LW vt3C 0x49A899) would show M_k on A frames: half-step offset, visual only. Must not end a tactical swap (cam check; none exists on the LW map).",
    "verification": "confirmed (lw-camera verifier)."
+  },
+  {
+   "id": "SP_CP_MOD",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x62EA97",
+   "length": 7,
+   "original_hex": "8d 4b 10 8b 01 ff 10",
+   "original_asm": [
+    "0x62ea97: 8d 4b 10  lea ecx,[ebx+0x10]",
+    "0x62ea9a: 8b 01  mov eax,[ecx]",
+    "0x62ea9c: ff 10  call dword ptr [eax]   ; UpdateModule::update() in the GameLogic::update bucket loop"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:CP_MOD_STUB> 90 90",
+   "stub": "CP_MOD_STUB: cmp byte ptr [g_cpDue],0 / jne slow / go: lea ecx,[ebx+10h] / mov eax,[ecx] / jmp dword ptr [eax] (callee returns to 0x62EA9C = 90 90, then 0x62EA9E). slow: CP_SLOW IDX_CP_MOD = SAVE_ALL; fxsave [g_cpFx] (static, 16-aligned, 512 B, main thread only); push IDX_CP_MOD; call AotR60_Checkpoint (cdecl); add esp,4; fxrstor [g_cpFx]; RESTORE_ALL; jmp go.",
+   "resume_address": "0x62EA9C (nop nop) -> 0x62EA9E",
+   "live_after": "Entry: EBX=sleepy entry, ESI=GL, EDI=bucket vector, EBP frame; EAX/ECX written by the span, EDX/EFLAGS dead, x87 empty (call boundary). After: EAX=callee result (cmp eax,1 at 0x62EA9E), EBX/ESI/EDI/EBP preserved. Only difference to stock: the return slot holds 0x62EA9C instead of 0x62EA9E (VTGATE precedent).",
+   "purpose": "Checkpoint before every awake module update: subs 3/4 (bucket 0 halves, AIUpdate) and sub 5 (buckets 1-2). Dominant checkpoint; gap = one module update (INFERRED <0.05 ms typical, <=1 ms worst).",
+   "evidence": "checkpoint verifier (docs/analysis/split_present/area_checkpoints.md: 0 errors, 0 notes; re-run independently); bytes re-read from game.dat",
+   "dll_vars": [
+    {
+     "name": "g_cpDue",
+     "ctype": "volatile uint8_t",
+     "value_30": "0 (never set)",
+     "value_60_A": "0",
+     "value_60_B": "0 until the timer thread reaches the target of a PENDING deferred B; cleared by the main thread when it presents or cancels",
+     "note": "the only byte the fast path reads"
+    }
+   ],
+   "branch_into_span_check": "Checkpoint verifier: function-local + linear capstone sweep of all executable sections, brute rel8/rel32/jcc32 decode at every byte, abs32 value scan, overlap check vs tools/sites.json (main and wip branches), the Living World site list and AotR hooks: 0 hits. Must also pass tools/verify_sites.py after adding.",
+   "risks": "Indirect-call span: CP_SLOW runs before 'go', so SAVE_ALL sees the stock state; kind is call_gate over a 7-byte span ending in an indirect call (not a plain call replacement)."
+  },
+  {
+   "id": "SP_CP_PATH",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x6EC0D1",
+   "length": 7,
+   "original_hex": "56 8d 91 00 08 00 00",
+   "original_asm": [
+    "0x6ec0d1: 56  push esi",
+    "0x6ec0d2: 8d 91 00 08 00 00  lea edx,[ecx+0x800]   ; pathfinder queue pop, called once per path from 0x6F24AE / 0x6F2504 inside 0x6F2364"
+   ],
+   "kind": "func_detour",
+   "replacement_hex": "e9 <rel32:CP_PATH_CAVE> 90 90",
+   "stub": "CP_PATH_CAVE: cmp byte ptr [g_cpDue],0 / jne slow / go: push esi / lea edx,[ecx+800h] / jmp dword ptr [T_6EC0D8]. slow: CP_SLOW IDX_CP_PATH = SAVE_ALL; fxsave [g_cpFx] (static, 16-aligned, 512 B, main thread only); push IDX_CP_PATH; call AotR60_Checkpoint (cdecl); add esp,4; fxrstor [g_cpFx]; RESTORE_ALL; jmp go. (slow path runs before push esi: stack as at entry)",
+   "resume_address": "0x6EC0D8",
+   "live_after": "Entry: ECX=queue, [esp]=return to 0x6F24B3/0x6F2509, EAX/EDX dead (written 0x6EC0D2/0x6EC0D8), EFLAGS dead (function entry), x87 empty. At 0x6EC0D8: ESI pushed, EDX=ECX+0x800 as stock.",
+   "purpose": "Checkpoint before each path search (pathfinder 0x6F2364 at the start of every sub via 0x62E69F and again in sub 5 via TheAI 0x6FEC66). Gap = one A* search (INFERRED 1-4 ms, unsplittable).",
+   "evidence": "checkpoint verifier (docs/analysis/split_present/area_checkpoints.md: 0 errors, 0 notes; re-run independently); bytes re-read from game.dat",
+   "dll_vars": [
+    {
+     "name": "g_cpDue",
+     "ctype": "volatile uint8_t",
+     "value_30": "0 (never set)",
+     "value_60_A": "0",
+     "value_60_B": "0 until the timer thread reaches the target of a PENDING deferred B; cleared by the main thread when it presents or cancels",
+     "note": "the only byte the fast path reads"
+    }
+   ],
+   "branch_into_span_check": "Checkpoint verifier: function-local + linear capstone sweep of all executable sections, brute rel8/rel32/jcc32 decode at every byte, abs32 value scan, overlap check vs tools/sites.json (main and wip branches), the Living World site list and AotR hooks: 0 hits. Must also pass tools/verify_sites.py after adding.",
+   "risks": ""
+  },
+  {
+   "id": "SP_CP_PLAYER",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x6A84E5",
+   "length": 5,
+   "original_hex": "e8 7f 6d 00 00",
+   "original_asm": [
+    "0x6a84e5: e8 7f 6d 00 00  call 0x6af269"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:CP_PLAYER_STUB>",
+   "stub": "CP_PLAYER_STUB: cmp byte ptr [g_cpDue],0 / jne slow / go: jmp dword ptr [T_6AF269] (tail jump: callee sees return address 0x6A84EA, identical to stock). slow: CP_SLOW IDX_CP_PLAYER = SAVE_ALL; fxsave [g_cpFx] (static, 16-aligned, 512 B, main thread only); push IDX_CP_PLAYER; call AotR60_Checkpoint (cdecl); add esp,4; fxrstor [g_cpFx]; RESTORE_ALL; jmp go.",
+   "resume_address": "0x6A84EA",
+   "live_after": "Entry: ECX=Player* (0x6A84E3), ESI=slot ptr, EDI=count, EFLAGS dead (dec edi/jne at 0x6A84ED), x87 empty. Return address 0x6A84EA identical to stock.",
+   "purpose": "Sub-5 checkpoint before each of the 20 Player::update calls (AIPlayer::update 0x8F9705 incl. the 5-tick 0x8F8F68 and 10-tick 0x8F3EFE routines).",
+   "evidence": "checkpoint verifier (docs/analysis/split_present/area_checkpoints.md: 0 errors, 0 notes; re-run independently); bytes re-read from game.dat",
+   "dll_vars": [
+    {
+     "name": "g_cpDue",
+     "ctype": "volatile uint8_t",
+     "value_30": "0 (never set)",
+     "value_60_A": "0",
+     "value_60_B": "0 until the timer thread reaches the target of a PENDING deferred B; cleared by the main thread when it presents or cancels",
+     "note": "the only byte the fast path reads"
+    }
+   ],
+   "branch_into_span_check": "Checkpoint verifier: function-local + linear capstone sweep of all executable sections, brute rel8/rel32/jcc32 decode at every byte, abs32 value scan, overlap check vs tools/sites.json (main and wip branches), the Living World site list and AotR hooks: 0 hits. Must also pass tools/verify_sites.py after adding.",
+   "risks": ""
+  },
+  {
+   "id": "SP_CP_SKAI",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x6A96F3",
+   "length": 5,
+   "original_hex": "e8 fe 46 24 00",
+   "original_asm": [
+    "0x6a96f3: e8 fe 46 24 00  call 0x8eddf6"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:CP_SKAI_STUB>",
+   "stub": "CP_SKAI_STUB: cmp byte ptr [g_cpDue],0 / jne slow / go: jmp dword ptr [T_8EDDF6] (tail jump: callee sees return address 0x6A96F8, identical to stock). slow: CP_SLOW IDX_CP_SKAI = SAVE_ALL; fxsave [g_cpFx] (static, 16-aligned, 512 B, main thread only); push IDX_CP_SKAI; call AotR60_Checkpoint (cdecl); add esp,4; fxrstor [g_cpFx]; RESTORE_ALL; jmp go.",
+   "resume_address": "0x6A96F8",
+   "live_after": "Entry: ECX=entry (0x6A96F1), EDI=iterator, ESI=&mgr+0xA4C, EFLAGS dead (add edi,4/cmp edi,[esi] after), x87 empty. Return address identical to stock.",
+   "purpose": "Sub-5 checkpoint per SkirmishAIManager entry (splits the manager tail after the player list).",
+   "evidence": "checkpoint verifier (docs/analysis/split_present/area_checkpoints.md: 0 errors, 0 notes; re-run independently); bytes re-read from game.dat",
+   "dll_vars": [
+    {
+     "name": "g_cpDue",
+     "ctype": "volatile uint8_t",
+     "value_30": "0 (never set)",
+     "value_60_A": "0",
+     "value_60_B": "0 until the timer thread reaches the target of a PENDING deferred B; cleared by the main thread when it presents or cancels",
+     "note": "the only byte the fast path reads"
+    }
+   ],
+   "branch_into_span_check": "Checkpoint verifier: function-local + linear capstone sweep of all executable sections, brute rel8/rel32/jcc32 decode at every byte, abs32 value scan, overlap check vs tools/sites.json (main and wip branches), the Living World site list and AotR hooks: 0 hits. Must also pass tools/verify_sites.py after adding.",
+   "risks": ""
+  },
+  {
+   "id": "SP_CP_SCRIPT",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x60A3BA",
+   "length": 5,
+   "original_hex": "e8 9d fd ff ff",
+   "original_asm": [
+    "0x60a3ba: e8 9d fd ff ff  call 0x60a15c"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:CP_SCRIPT_STUB>",
+   "stub": "CP_SCRIPT_STUB: cmp byte ptr [g_cpDue],0 / jne slow / go: jmp dword ptr [T_60A15C] (tail jump: callee sees return address 0x60A3BF, identical to stock). slow: CP_SLOW IDX_CP_SCRIPT = SAVE_ALL; fxsave [g_cpFx] (static, 16-aligned, 512 B, main thread only); push IDX_CP_SCRIPT; call AotR60_Checkpoint (cdecl); add esp,4; fxrstor [g_cpFx]; RESTORE_ALL; jmp go.",
+   "resume_address": "0x60A3BF",
+   "live_after": "Entry: ECX=ScriptEngine, 2 args pushed (0x60A3B6/0x60A3B7), ESI=list node, EDI=context, EBX=engine, EFLAGS dead, x87 empty. Return address and arg slots identical to stock.",
+   "purpose": "Sub-1 checkpoint before each script evaluation (list walker 0x60A377). Also reachable outside GameLogic::update: AotR60_Checkpoint ignores hits unless g_inLogic.",
+   "evidence": "checkpoint verifier (docs/analysis/split_present/area_checkpoints.md: 0 errors, 0 notes; re-run independently); bytes re-read from game.dat",
+   "dll_vars": [
+    {
+     "name": "g_cpDue",
+     "ctype": "volatile uint8_t",
+     "value_30": "0 (never set)",
+     "value_60_A": "0",
+     "value_60_B": "0 until the timer thread reaches the target of a PENDING deferred B; cleared by the main thread when it presents or cancels",
+     "note": "the only byte the fast path reads"
+    }
+   ],
+   "branch_into_span_check": "Checkpoint verifier: function-local + linear capstone sweep of all executable sections, brute rel8/rel32/jcc32 decode at every byte, abs32 value scan, overlap check vs tools/sites.json (main and wip branches), the Living World site list and AotR hooks: 0 hits. Must also pass tools/verify_sites.py after adding.",
+   "risks": ""
+  },
+  {
+   "id": "SP_CP_OBJ1",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x62E912",
+   "length": 5,
+   "original_hex": "e8 fc f6 0d 00",
+   "original_asm": [
+    "0x62e912: e8 fc f6 0d 00  call 0x70e013"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:CP_OBJ1_STUB>",
+   "stub": "CP_OBJ1_STUB: cmp byte ptr [g_cpDue],0 / jne slow / go: jmp dword ptr [T_70E013] (tail jump: callee sees return address 0x62E917, identical to stock). slow: CP_SLOW IDX_CP_OBJ1 = SAVE_ALL; fxsave [g_cpFx] (static, 16-aligned, 512 B, main thread only); push IDX_CP_OBJ1; call AotR60_Checkpoint (cdecl); add esp,4; fxrstor [g_cpFx]; RESTORE_ALL; jmp go.",
+   "resume_address": "0x62E917",
+   "live_after": "Entry: ECX=Object (0x62E910), EBX=object, ESI=GL, EFLAGS dead, x87 empty. After: EAX=getter result (test eax,eax 0x62E917).",
+   "purpose": "Sub-1 checkpoint per object in the first object loop (bounds the Lua/post-script segment).",
+   "evidence": "checkpoint verifier (docs/analysis/split_present/area_checkpoints.md: 0 errors, 0 notes; re-run independently); bytes re-read from game.dat",
+   "dll_vars": [
+    {
+     "name": "g_cpDue",
+     "ctype": "volatile uint8_t",
+     "value_30": "0 (never set)",
+     "value_60_A": "0",
+     "value_60_B": "0 until the timer thread reaches the target of a PENDING deferred B; cleared by the main thread when it presents or cancels",
+     "note": "the only byte the fast path reads"
+    }
+   ],
+   "branch_into_span_check": "Checkpoint verifier: function-local + linear capstone sweep of all executable sections, brute rel8/rel32/jcc32 decode at every byte, abs32 value scan, overlap check vs tools/sites.json (main and wip branches), the Living World site list and AotR hooks: 0 hits. Must also pass tools/verify_sites.py after adding.",
+   "risks": ""
+  },
+  {
+   "id": "SP_CP_PART",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0xA3B564",
+   "length": 6,
+   "original_hex": "8b b7 20 01 00 00",
+   "original_asm": [
+    "0xa3b564: 8b b7 20 01 00 00  mov esi,[edi+0x120]   ; next dirty object in PartitionManager::update 0xA3B4E0 (sub 2)"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:CP_PART_STUB> 90",
+   "stub": "CP_PART_STUB: cmp byte ptr [g_cpDue],0 / jne slow / go: mov esi,[edi+120h] / ret (returns to 0xA3B569 nop -> 0xA3B56A test esi,esi). slow: CP_SLOW IDX_CP_PART = SAVE_ALL; fxsave [g_cpFx] (static, 16-aligned, 512 B, main thread only); push IDX_CP_PART; call AotR60_Checkpoint (cdecl); add esp,4; fxrstor [g_cpFx]; RESTORE_ALL; jmp go.",
+   "resume_address": "0xA3B569 (nop) -> 0xA3B56A",
+   "live_after": "Entry: EDI=PartitionManager, EAX/ECX/EDX dead, EFLAGS dead (test esi,esi follows), x87 empty (no x87 in the function). After: ESI=[EDI+0x120] as stock. 0xA3B564 is the target of je at 0xA3B552 (span start, allowed).",
+   "purpose": "Sub-2 checkpoint per object re-celled by the partition manager (vtable 0xC95180 vt+0x28 -> 0xA39020 -> 0xA3B4E0, CONFIRMED).",
+   "evidence": "checkpoint verifier (docs/analysis/split_present/area_checkpoints.md: 0 errors, 0 notes; re-run independently); bytes re-read from game.dat",
+   "dll_vars": [
+    {
+     "name": "g_cpDue",
+     "ctype": "volatile uint8_t",
+     "value_30": "0 (never set)",
+     "value_60_A": "0",
+     "value_60_B": "0 until the timer thread reaches the target of a PENDING deferred B; cleared by the main thread when it presents or cancels",
+     "note": "the only byte the fast path reads"
+    }
+   ],
+   "branch_into_span_check": "Checkpoint verifier: function-local + linear capstone sweep of all executable sections, brute rel8/rel32/jcc32 decode at every byte, abs32 value scan, overlap check vs tools/sites.json (main and wip branches), the Living World site list and AotR hooks: 0 hits. Must also pass tools/verify_sites.py after adding.",
+   "risks": ""
+  },
+  {
+   "id": "SP_CP_COLL",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0xB6D11E",
+   "length": 5,
+   "original_hex": "8b 4e 04 8b 16",
+   "original_asm": [
+    "0xb6d11e: 8b 4e 04  mov ecx,[esi+4]",
+    "0xb6d121: 8b 16  mov edx,[esi]   ; active-pair path in collision callbacks 0xB6D060 (sub 2)"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:CP_COLL_STUB>",
+   "stub": "CP_COLL_STUB: cmp byte ptr [g_cpDue],0 / jne slow / go: mov ecx,[esi+4] / mov edx,[esi] / ret (returns to 0xB6D123). slow: CP_SLOW IDX_CP_COLL = SAVE_ALL; fxsave [g_cpFx] (static, 16-aligned, 512 B, main thread only); push IDX_CP_COLL; call AotR60_Checkpoint (cdecl); add esp,4; fxrstor [g_cpFx]; RESTORE_ALL; jmp go.",
+   "resume_address": "0xB6D123",
+   "live_after": "Entry: ESI=pair, EBX=CollisionManager, EAX/EBP/EDI dead (rewritten 0xB6D12E/0xB6D129/0xB6D12B), EFLAGS dead (next reader test ecx,ecx 0xB6D146 after calls), x87 empty (temporaries 0xB6D15C..0xB6D17C popped). After: ECX=[esi+4], EDX=[esi] as stock.",
+   "purpose": "Sub-2 checkpoint per active collision pair (vtable 0xD0BF08 vt+0x28 -> 0xB6C420 -> 0xB6E6B0 -> 0xB6D060, CONFIRMED). Highest hit count (INFERRED up to ~15k/tick); fast path only costs cmp/jne.",
+   "evidence": "checkpoint verifier (docs/analysis/split_present/area_checkpoints.md: 0 errors, 0 notes; re-run independently); bytes re-read from game.dat",
+   "dll_vars": [
+    {
+     "name": "g_cpDue",
+     "ctype": "volatile uint8_t",
+     "value_30": "0 (never set)",
+     "value_60_A": "0",
+     "value_60_B": "0 until the timer thread reaches the target of a PENDING deferred B; cleared by the main thread when it presents or cancels",
+     "note": "the only byte the fast path reads"
+    }
+   ],
+   "branch_into_span_check": "Checkpoint verifier: function-local + linear capstone sweep of all executable sections, brute rel8/rel32/jcc32 decode at every byte, abs32 value scan, overlap check vs tools/sites.json (main and wip branches), the Living World site list and AotR hooks: 0 hits. Must also pass tools/verify_sites.py after adding.",
+   "risks": ""
+  },
+  {
+   "id": "SP_STEP_DRAIN",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x441822",
+   "length": 5,
+   "original_hex": "e8 79 0d 1f 00",
+   "original_asm": [
+    "0x441822: e8 79 0d 1f 00  call 0x6325a0   ; GameEngine::update (C0 render + stepper) in Win32GameEngine::update 0x44181F"
+   ],
+   "kind": "call_gate",
+   "replacement_hex": "e8 <rel32:STEP_DRAIN_STUB>",
+   "stub": "STEP_DRAIN_STUB: call dword ptr [T_6325A0] (ECX=ESI=engine unchanged) / cmp dword ptr [g_ppState],0 / jne drain / ret / drain: SAVE_ALL; push SP_DRAIN_STEP; call AotR60_SpDrain (cdecl, main thread: wait until min(target, next pacer deadline) then present; cancel if iconic/not foreground); add esp,4; RESTORE_ALL; ret. 30 mode: g_ppState==0 -> call + cmp + ret.",
+   "resume_address": "0x441827",
+   "live_after": "At 0x441827: ESI=engine, EBX/EDI/EBP as stock (callee-saved), EAX overwritten (mov eax,[0xDC3C64]), ECX/EDX dead, EFLAGS dead (test eax,eax), x87 empty. GameEngine::update runs with its frame 4 bytes lower than stock (VTGATE precedent).",
+   "purpose": "Primary end drain: the deferred B is presented (or cancelled) before the IsIconic loop 0x441827, the message pump (tail jmp 0x4418C2 -> 0x441A7D), the pacer 0x63A196, the asset streamer 0x6325B0 and the next C0. A pending Present never outlives one GameEngine::update call.",
+   "evidence": "lead verification: bytes re-read from a copy of game.dat; instruction boundaries checked by disassembly; sync-area span check: no interior branch/abs32 hit except the documented false positives; adjacent RESET site 0x44181A..0x44181E does not overlap; 0x44181F is entered only via vtable slot 0xBD8508",
+   "dll_vars": [
+    {
+     "name": "g_ppState",
+     "ctype": "volatile LONG",
+     "value_30": "0 IDLE (never set)",
+     "value_60_A": "0",
+     "value_60_B": "1 PENDING from the deferred B PRESENT_STUB until a checkpoint/drain presents it or a cancel; 2 PRESENTING while the main thread is inside the deferred Present",
+     "note": "changed only by InterlockedCompareExchange; cancel from any thread is PENDING->IDLE"
+    }
+   ],
+   "branch_into_span_check": "0x441823..0x441826: listing operand scan 0 hits; raw rel8/rel32/abs32 sweep: only the false positive 0x5FB6C8->0x441824 (inside 'call 0xa3cef0' at 0x5FB6C7). Re-run verify_sites.py.",
+   "risks": "An exception unwinding out of 0x6325A0 skips the drain; covered by the C0 net in OnPreRender (counted)."
+  },
+  {
+   "id": "SP_PUMP_NET",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x441A7D",
+   "length": 5,
+   "original_hex": "b8 56 11 b7 00",
+   "original_asm": [
+    "0x441a7d: b8 56 11 b7 00  mov eax,0xb71156   ; serviceWindowsOS (Win32GameEngine vt5C) SEH-prologue argument",
+    "0x441a82: call 0xa3cef0 (not in span)"
+   ],
+   "kind": "func_detour",
+   "replacement_hex": "e9 <rel32:PUMP_NET_CAVE>",
+   "stub": "PUMP_NET_CAVE: cmp dword ptr [g_ppState],0 / jne net / stock: mov eax,0B71156h / jmp dword ptr [T_441A82] / net: SAVE_ALL; push SP_NET_PUMP; call AotR60_SpNet (main thread: present now unless iconic/not foreground -> cancel; other thread: cancel); add esp,4; RESTORE_ALL; jmp stock.",
+   "resume_address": "0x441A82",
+   "live_after": "At 0x441A82: EAX=0xB71156 (consumed by the SEH helper 0xA3CEF0), all other GPRs/ESP as at entry, EFLAGS dead (function entry), x87 empty.",
+   "purpose": "Safety net: serviceWindowsOS is reachable inside GameLogic::update (0x84EEBA calls it at 0x84EEFA; 0x98B12C at 0x98B16C; a reachability check). No window message is dispatched while a deferred B is pending.",
+   "evidence": "lead verification: bytes re-read from a copy of game.dat; instruction boundaries checked by disassembly; sync-area span check: no interior branch/abs32 hit except the documented false positives; entered via vtable 0xBD853C and the tail jmp at 0x4418C2",
+   "dll_vars": [
+    {
+     "name": "g_ppState",
+     "ctype": "volatile LONG",
+     "value_30": "0 IDLE (never set)",
+     "value_60_A": "0",
+     "value_60_B": "1 PENDING from the deferred B PRESENT_STUB until a checkpoint/drain presents it or a cancel; 2 PRESENTING while the main thread is inside the deferred Present",
+     "note": "changed only by InterlockedCompareExchange; cancel from any thread is PENDING->IDLE"
+    }
+   ],
+   "branch_into_span_check": "0x441A7E..0x441A81: no interior reference except the false-positive pointer at 0x5FB46D (sync_verify). Re-run verify_sites.py.",
+   "risks": "Rare path; counted (must read ~0)."
+  },
+  {
+   "id": "SP_TCL_NET",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x516C40",
+   "length": 5,
+   "original_hex": "a1 74 34 dd 00",
+   "original_asm": [
+    "0x516c40: a1 74 34 dd 00  mov eax,[0xdd3474]   ; WW3D frame start (TestCooperativeLevel); callers 0x447645 (load screen) / 0x449D17 (drawFrame)"
+   ],
+   "kind": "func_detour",
+   "replacement_hex": "e9 <rel32:TCL_NET_CAVE>",
+   "stub": "TCL_NET_CAVE: cmp dword ptr [g_ppState],0 / jne net / stock: mov eax,ds:[0DD3474h] / jmp dword ptr [T_516C45] / net: SAVE_ALL; push SP_NET_TCL; call AotR60_SpNet; add esp,4; RESTORE_ALL; jmp stock.",
+   "resume_address": "0x516C45",
+   "live_after": "At 0x516C45: EAX=device pointer (loaded by the displaced mov after the net), other GPRs/ESP as at entry, EFLAGS dead (sub esp,0xC0), x87 empty.",
+   "purpose": "Safety net: the deferred B is presented before TestCooperativeLevel / a new frame on every drawFrame path (a second drawFrame in the same render, the load-screen draw).",
+   "evidence": "lead verification: bytes re-read from a copy of game.dat; instruction boundaries checked by disassembly; sync-area span check: no interior branch/abs32 hit except the documented false positives",
+   "dll_vars": [
+    {
+     "name": "g_ppState",
+     "ctype": "volatile LONG",
+     "value_30": "0 IDLE (never set)",
+     "value_60_A": "0",
+     "value_60_B": "1 PENDING from the deferred B PRESENT_STUB until a checkpoint/drain presents it or a cancel; 2 PRESENTING while the main thread is inside the deferred Present",
+     "note": "changed only by InterlockedCompareExchange; cancel from any thread is PENDING->IDLE"
+    }
+   ],
+   "branch_into_span_check": "Only direct callers 0x447645/0x449D17 (span start); 0x516C41..0x516C44 no hit; the raw-sweep hit 0x516C3D->0x516C41 lies inside 'jmp 0x53e660' at 0x516C3B (false positive).",
+   "risks": "Also runs on the load-screen thread: AotR60_SpNet only cancels off the main thread, never presents."
+  },
+  {
+   "id": "SP_BEGIN_RENDER_NET",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x517B30",
+   "length": 10,
+   "original_hex": "83 ec 28 80 3d 14 1e dd 00 00",
+   "original_asm": [
+    "0x517b30: 83 ec 28  sub esp,0x28",
+    "0x517b33: 80 3d 14 1e dd 00 00  cmp byte ptr [0xdd1e14],0   ; WW3D::Begin_Render (Clear + BeginScene)"
+   ],
+   "kind": "func_detour",
+   "replacement_hex": "e9 <rel32:BEGIN_RENDER_NET_CAVE> 90 90 90 90 90",
+   "stub": "BEGIN_RENDER_NET_CAVE: cmp dword ptr [g_ppState],0 / jne net / stock: sub esp,28h / cmp byte ptr ds:[0DD1E14h],0 / jmp dword ptr [T_517B3A] / net: SAVE_ALL; push SP_NET_BEGIN_RENDER; call AotR60_SpNet; add esp,4; RESTORE_ALL; jmp stock. (the displaced cmp is the last flag writer before the jmp)",
+   "resume_address": "0x517B3A",
+   "live_after": "At 0x517B3A: ZF from the displaced cmp (je 0x517C50), ESP=entry-0x28, all GPRs as at entry, x87 empty.",
+   "purpose": "Safety net: Present before any Clear/BeginScene on every Begin_Render path (drawFrame 0x449EA5, RTT passes 0x47D6F6/0x47D781/0x47F218, 0x4437B3, 0x44765F).",
+   "evidence": "lead verification: bytes re-read from a copy of game.dat; instruction boundaries checked by disassembly; sync-area span check: no interior branch/abs32 hit except the documented false positives",
+   "dll_vars": [
+    {
+     "name": "g_ppState",
+     "ctype": "volatile LONG",
+     "value_30": "0 IDLE (never set)",
+     "value_60_A": "0",
+     "value_60_B": "1 PENDING from the deferred B PRESENT_STUB until a checkpoint/drain presents it or a cancel; 2 PRESENTING while the main thread is inside the deferred Present",
+     "note": "changed only by InterlockedCompareExchange; cancel from any thread is PENDING->IDLE"
+    }
+   ],
+   "branch_into_span_check": "Direct callers 0x4437B3, 0x44765F, 0x449EA5, 0x47D6F6, 0x47D781, 0x47F218 all target the span start; 0x517B31..0x517B39 no hit.",
+   "risks": "Any thread: off-main hits cancel."
+  },
+  {
+   "id": "SP_SHUTDOWN",
+   "phase": "sp",
+   "group": "split present (heavy logic steps)",
+   "address": "0x517AA0",
+   "length": 7,
+   "original_hex": "6a ff 68 b8 8d b7 00",
+   "original_asm": [
+    "0x517aa0: 6a ff  push -1",
+    "0x517aa2: 68 b8 8d b7 00  push 0xb78db8   ; WW3D::Shutdown SEH prologue (-> DX8Wrapper::Shutdown 0x5257A0 -> device Release 0x52121B)"
+   ],
+   "kind": "func_detour",
+   "replacement_hex": "e9 <rel32:SHUTDOWN_CAVE> 90 90",
+   "stub": "SHUTDOWN_CAVE: SAVE_ALL; call AotR60_SpShutdown (cancel any pending Present, g_spDisabled=1, signal the timer thread to exit, never wait for it); RESTORE_ALL; push -1; push 0B78DB8h; jmp dword ptr [T_517AA7]. No-op in C++ when split-present never started.",
+   "resume_address": "0x517AA7",
+   "live_after": "At 0x517AA7: ECX=param_1 (fastcall, passed on), EDX/other GPRs as at entry, the two pushes on the stack, EFLAGS dead, x87 empty.",
+   "purpose": "No deferred Present after the device is released; stops the timer thread.",
+   "evidence": "lead verification: bytes re-read from a copy of game.dat; instruction boundaries checked by disassembly; sync-area span check: no interior branch/abs32 hit except the documented false positives; callers 0x402D27, 0x4466B4, 0x4499F5; callers(0x5257A0) = {0x517AA0}",
+   "dll_vars": [
+    {
+     "name": "g_ppState",
+     "ctype": "volatile LONG",
+     "value_30": "0 IDLE (never set)",
+     "value_60_A": "0",
+     "value_60_B": "1 PENDING from the deferred B PRESENT_STUB until a checkpoint/drain presents it or a cancel; 2 PRESENTING while the main thread is inside the deferred Present",
+     "note": "changed only by InterlockedCompareExchange; cancel from any thread is PENDING->IDLE"
+    }
+   ],
+   "branch_into_span_check": "0x517AA1..0x517AA6 no hit.",
+   "risks": "None functional."
   }
  ],
  "coverage": [
@@ -6005,6 +6402,7 @@
   "GameClient::update allow-list gates (0x64849E)": "I produced 23 gate sites; their bytes are verified with pefile + capstone. Spans are on instruction boundaries, and the 57 coverage entries list every call instruction in GameClient::update 0x64849E..0x6488D7.\n\n1. NEW ISSUE: the drawable block is not A-only by itself. PLAN 1.4 says it is.\n   - The block decision is skip = freeze || [0xD9F6F8]==m_frame (0x648701..0x648712).\n   - freeze includes the W3DView freeze byte +0x23D0 (vtD8 0x48B5D3) and vt78. 0x489817 and 0x48A417 clear +0x23D0. Both are reached through 0x48A953, which W3DView::update 0x48BCF2 calls at 0x48C09A. That is inside the A-render's draw (0x648869), after the block decision.\n   - Unpause in A-only code that runs after the block (propagate, InGameUI) has the same effect.\n   - So when a freeze-time camera move ends, or an unpause happens late, the B-render sees freeze=0 with [0xD9F6F8]!=m_frame. It then runs updateDrawable, AnimSound and 0x64594B at an m_frame that stock skipped.\n   - G4-15 shows this path can append MSG 0x3ED (logic-facing), so this is a determinism risk, not only a visual one.\n   - I added GATE_GC_DRAWBLK: a 5-byte jmp_detour at 0x648705. On B it loads EAX=m_frame, which forces skip=1. In 30 mode and on A-renders it is byte-identical in effect.\n   - PLAN 1.4's \"Already A-only by itself\" should be amended.\n\n2. Byte patterns:\n   - Plain `8b 01 ff 50 28`: CLOUD 0x64859E, FIRE 0x6485BC, ANIM2D 0x6485C7, SKEVA 0x6485EC, EVA 0x6485F7, TERRAIN 0x648833, DISPUPD 0x64883E, DSM 0x648872, SHELL 0x648891, INTRO 0x6488CE.\n   - vt6C form: LWVIEW 0x6484D7 (`8b 01 ff 50 6c`).\n   - Direct `e8` calls: LOOKAT, LWXLAT, GESTURE, LWUI, POPUPS, PENDGAME2, DISPUPD_LW. The stubs re-encode the target as `jmp dword ptr [g_tgt_*]` so every register is identical at callee entry.\n   - 8-byte selectors `8b 0d imm32 85 c9`: KBD and MOUSE. Verified that `74 10` at 0x6485D4 goes to 0x6485E6 and at 0x648604 goes to 0x648616, skipping both the update and the createStreamMessages call.\n   - 11-byte `8b 0d imm32 8b 01 ff 50 28`: WM 0x64863A and IGUI 0x6488A6.\n   - `a1` load: DRAWBLK.\n   - All gated callees take no stack arguments; each ends in a plain `ret`, or tail-jumps to a function that does.\n\n3. Branch-into-span check, three methods:\n   - rg of listing.asm for every interior address as an operand, with a positive control. Result: 0 hits.\n   - Raw little-endian dword scan of the whole image. Result: 0 hits.\n   - Brute-force rel8/rel32/jcc32 decode at every byte offset of all executable sections. Result: one false positive, the 0x64880A ModRM byte of `ff 70 40`.\n   - Branch targets that land on span starts or ends (allowed): 0x6484E7, 0x6485A3, 0x6485C1, 0x648616, 0x648850, 0x648891, 0x6488A6, 0x6488D3.\n   - No AotR hook overlaps.\n   - The whole function is byte-identical (md5 b7f0df87...) in rotwk\\game.dat, aotr\\zGameDats\\game.dat, delayfix.dat and game820.dat.\n\n4. Gate predicate: SKIP = g_m60 && !g_uiTick, testing both bytes.\n   - This relies on g_uiTick==1 whenever g_m60==0 (reset hook and controller).\n   - GameClient::update is reached only via vt28 (slot 0xBDA708 → 0x44BFEB jmp) from clientUpdate 0x632498 on the main thread. EAX is not read after it returns.\n   - Optional phase-1 telemetry: per-site inc counters. In the selectors they must come before the final `test ecx,ecx`.\n\n5. Superseded G1/G3 proposals:\n   - LookAt, LW translator and the IGUI camera block \"run on B with halved steps\": the PLAN makes them A-only, so they are whole-call gates here.\n   - 0x62B385 \"run on B\": the PLAN makes it A-only.\n\n6. Defensive sites:\n   - 0x64884B is the GL+0x125 path, which per PLAN 1.8 is the LW strategic map, not loading. It is unreachable at 60 until phase 6.\n   - GATE_GC_DISPUPD_INTRO is optional. If dropped, classify 0x6488D0 as run.\n   - WM could equally use the 5-byte span 0x648640. I followed the task's 0x64863A.\n\n7. Read-only violation: my first branch-scan command wrote a temp file. I deleted it right away. No other file was created or modified.",
   "render-internal integrators part 2": "USER REPORT (still 30 fps in windowed skirmish): this spec does not explain or fix that. These sites only change what B-renders do, so they cannot raise the frame rate. A steady 30 fps points to 60 mode never engaging (g_m60 / mode controller / C0 and Halt hooks). Check that before installing this group.\n\nSCOPE: group 'render-internal integrators part 2', effects 1-7 from the sites.json todo. 14 entries: 13 phase-2a sites plus 1 phase-4b-only site (INT_LIGHT_PULSE_LTR). Still open in the todo: outline fade, LightPulse, instance fade, overlay fade, subtitles, UI particles and world-anim rise.\n\nVERIFICATION:\n- Spans: every span was checked with pefile+capstone in a copy of game.dat. Bytes are identical in delayfix.dat and game820.dat. Start, end and resume/B-exit addresses are listing.asm instruction starts.\n- Branch-into checks used three methods: the listing.asm operand scan, a whole-image absolute-dword scan, and a brute rel8/rel32/jcc32 decode of every executable section (AotR sections included). There were 3 hits, all mid-instruction false positives: 0x4CA548 (INT_ROPE), 0x56EFEB (INT_TREAD pointer) and 0x4B1554 (INT_DEBRIS).\n- No overlap with the 88 existing sites.json spans or IDs, and no AotR hook in 0x4B0000..0x4D1000 (G7).\n- All caves use the part-1 gate: g_skipB, then the fs:[0x24] == g_mainTid check, with a pure original-instruction 30-mode path. Operand vars are initialised in DllMain from game memory.\n- Data: 0xD9A3A0 and 0xD9F608 have no writers and no data pointers.\n\n(7) SUBOBJECT FADE IS PER DRAW, NOT PER m_frame: 0x8B8F40 -> 0x672823 -> interface vt+0x88 0x4C3B25 stores the fade entry and sets dirty module+0x1C9. W3DModelDraw::doDrawModule (0x4C78B4) then calls vt+0x74 0x4BA74F on every draw while dirty. That calls 0x4B31C9, which steps the delay (0x4B3244) and alpha (0x4B3266) and re-arms dirty (0x4B3258, and 0x4B30E4 while 0 < alpha < 1). Hence two sites.\n\nDEVIATIONS FROM PLAN 1.5 / SYNTHESIS:\n1. Light flicker: 0x4CF2BF -> numerator 0x4CF2C3, because an int LTR cannot give a zero step. In 4b the 0.5f numerator equals 'LTR -> 10'.\n2. Light pulse: 0x4CF3D3 is only the reload, not a per-draw step. The real steps are 0x4CF413 and 0x4CF425, and the reload calls CRT rand(). 2a holds the whole pulse block with a detour at 0x4CF3C9; 0x4CF3D3 becomes the 4b form.\n3. Rope: 0x4CA59E -> block start 0x4CA599 (skip all three integrators).\n4. Tank: 0x4CDDCB -> 0x4CDE8B (only the scroll loop). The pivot path is A-only by construction and needs the full rate in 4b.\n5. Truck: 0x4CC4B9 -> 0x4CC4B3, because EFLAGS are live across 0x4CC4B9. Cab (0x4CC1F5) and trailer (0x4CC313) damping sites are added.\n6. Wake: threshold operand 0x4D0593 added, so B cannot snap early.\n7. Debris: the integrator is inc [esi+0x3C] at 0x4B155C.\n8. Subobject fade: 0x8B8F40 needs no site. Do not redirect 0x8B8F8C/0x8B8FBC as well.\n\nAOTR USAGE (data/ini scan):\n- W3DLightDraw: 21 files.\n- W3DTruckDraw: 55 files, with tire bones but no CabBone or TrailerBone, so the cab and trailer sites are insurance.\n- W3DTankDraw: 5 files, none setting TreadAnimationRate.\n- W3DBoatWakeModelDraw: 1 file.\n- W3DDebrisDraw: 1 file.\n- W3DRopeDraw: 0 files (insurance).\n- SubObjectsUpgrade: about 700 files.\n\nKNOWN NON-EXACT DETAILS (visual only):\n- The rope draws before it steps, so B shows A's new state one 60 Hz frame early.\n- Debris state transitions can occur on B with A's counter (a picture-exact alternative is in the INT_DEBRIS risks).\n- A light first drawn on a B-render shows pulse 0 for one frame.\n\nPHASE 4b SUMMARY:\n- Exact by var values only: INT_LIGHT_PHASE (0.5f) and INT_WAKE_* (0.0025f).\n- Exact cave forms using g_halfF = 0.5f on A and B, given in each stub: INT_TREAD scroll, INT_TRUCK_WHEEL, INT_SUBOBJ_DELAY and INT_SUBOBJ_ALPHA.\n- Pulse: remove INT_LIGHT_PULSE and install INT_LIGHT_PULSE_LTR (int 10). It is exact when frac(5/rate) is 0 or > 0.5.\n- No exact form, stays A-only: rope (second-order drop), truck cab and trailer (multiplicative damping), debris (int counter).\n\nHOUSEKEEPING: one scratch output file was created by mistake during analysis and then deleted. No other files were created or modified.\n\nThe user's report (\"still 30 fps\" in skirmish) is expected with the build that is installed now. %APPDATA%\\Age of the Ring\\aotr60\\aotr60.log says 'AotR60 0.1 (phase 0: passthrough) ... known build; 60 FPS patches arrive in phase 2 - running stock 30 FPS'. None of the sites below changes that; they are visual-only phase-2a/4b integrator specs.\n\nGROUP: render-internal integrators part 2, covering the 7 requested effects in 11 sites (10 in phase 2a, 1 in phase 4b). Not covered here, and still open in the sites.json todo: light flicker (row 30), rope/treads/truck, boat wake and debris (row 31), subobject fade 0x8B8F40.\n\nVERIFICATION\n- All spans were checked in a copy of game.dat with pefile and capstone. They start and end on instruction boundaries, and the bytes are identical in delayfix.dat and game820.dat.\n- Branch-into checks used three methods:\n  - listing.asm operand scan: 0 hits;\n  - whole-image abs32 scan: only 11 mid-instruction false positives on 0x6A53FF;\n  - brute rel8/rel32/jcc32 decode of all executable sections: 0 hits (the scan was sanity-checked on known jump targets).\n- No overlap with the 88 existing sites.json spans (16-byte margin) or with any AotR hook.\n- B-gate predicate: g_skipB plus the fs:[0x24]==g_mainTid check, as in part 1.\n- The operand-redirect vars g_outlineStep and g_instFadeStep must be initialised in DllMain from 0xBDC1FC and 0xBD88C8, and switched by C0 at the same two points as g_skipB.\n\nDESIGN DECISIONS AND DEVIATIONS FROM PLAN 1.5 / G2\n1. LightPulse. Phase 2a gates W3DDynamicLight::On_Frame_Update through its only reference, the vtable slot 0xBDC00C (ptr_slot), so B redraws A's light exactly. Doubling the counters at creation (0x46D7A9, the PLAN table row) becomes the optional 4b site INT_LIGHTPULSE_DBL. It is exact only within one uninterrupted 60-mode run and must be enabled together with g_lp4b.\n2. Overlay fade. G2-D12's call-site skip would hide the overlay on every B-render. The replacement is a function-entry detour at 0x65CF05 with a draw-only B path that re-enters the stock tail at 0x65CFAB. It also covers the third caller 0x4476EC (W3DDisplay vt+0x18C), which G2 missed.\n3. Subtitles. G2-D13's skip at 0x44A203 would blank subtitles on B. The replacement is two call gates inside 0x66045B:\n   - 0x66045E: state machine 0x65FFCA. It is a NEW integrator: box alpha +-18 per call and a hold countdown of -33 ms per call. On B the stub returns A's visibility from the state.\n   - 0x660469: line scroller 0x6603BA, skipped on B.\n   The draws 0x65FB20/0x65F9D8 run every render. +0x44 is a pixel scroll offset. There is no exact 4b form.\n4. UI particles. A jmp detour over the whole 60-byte block. EFLAGS are re-created by re-executing 'test byte [esi+0x10],1', so no pushfd is needed. The cave is 4b-ready through g_uiPart4b: p += v/2 on every render, v *= d on B.\n5. World-anim rise. The cave skips the add on B, so there is no division by zero. 4b doubles the live LTR (cvtsi2ss + addss) instead of using G2's DLL int copy.\n6. Phase 4b exactness. Float32 simulation shows the instance fade with 1/24 steps is not bit-identical at pair ends: the clamp can move one pair, because 12*(1/12) rounds below 1. This corrects G2-D11. The outline fade crosses in the same pair. Both are visual only.\n\nOBSERVATIONS (not specified as sites)\n- Display vt+0x190 0x445FA5 is called at 0x44A1FD, right before the subtitle draw. It deletes the finished subtitle object at display+0x188 (state 1, empty queue). In 60 mode this can happen on the B-render, before the logic step instead of after it. The effect is display-only. If strict 'B mutates nothing' is wanted: call gate at 0x44A1FD (ff 90 90 01 00 00 -> e8 <stub> 90; B: ret, else jmp [eax+0x190]).\n- UI particles with GD+0xDB0 draw from the client RNG 0x6D343B on every render, so B consumes extra client-RNG values. This is client-only, not the logic RNG.",
   "render-internal integrators part 3 / UI (effects sweep 4a)": "Effects sweep after the first 60 FPS play test (user reports: buildings look built twice as fast, upgrade icons shimmer, stutter when panning fast). Construction itself is stock (logic-driven, verified). Fixed here: command-button progress clock one-shot request consumed by every draw (UI_PBCLOCK_*: B keeps it); animation FXEvents/LuaEvents/ModelConditionState FX evaluated once per pair on the B-render with stock render k's (prev,cur] window (INT_FXEV_GATE skips A, INT_FXEV_PREV keeps prev on B); AttachedModel (stuck arrows) lifetime; rider/passenger heading slew; laser texture cell; sail slew; turret history shift in 2a; floor fade (insurance); mouse tooltip linger; duplicate radar refresh (perf); terrain tile-texture rebuild budget A-only (INT_TERRAIN_TILEUPD: B-renders rebuilt extra 512x512 tiles after fast pans). Not installed: client-RNG replay for heat-haze/lightning flicker (needs rework; low visibility).",
-  "Living World strategic map (phase 6)": "Analysis: docs/analysis/living_world/ (plan.md, area_*.md: 5 areas, adversarial verification, synthesis).\n- The LW map runs on the normal main loop and stepper. Everything that steps LW client state is already A-only (GATE_GC_LOOKAT, GATE_GC_LWXLAT, GATE_GC_LWVIEW = whole vt6C incl. zoom 0x49AB21/0x49AB3E, fades, army mover 0x6C038B, LW manager and eye tower via GATE_LWM, camera fly 0x6BF78E, GATE_GC_LWUI). LW logic reads that state (zoom vt60 0x6B96E1, target vt70 0x6BAF63, fade flags 0x6B5BD3, army moving flag and waypoints), so it keeps stock steps.\n- The LW scene draw vt20 0x49B618 is stateless per render; a B-render rebuilds the camera and redraws stock render k (LW6_CAM_REC verifies the camera on B: lwBExact/lwBMismatch).\n- Presentation on A-renders: the W3D camera ([view+0xC0]) is swapped to the halfway pose between the last two A-render cameras for the LW scene render only (never the LW view fields: logic reads +0x110 which the build derives); no shadow refit; the far plane follows the zoom, so CameraCutLimits.allowFarChange keeps the larger one. LW objects (armies, buildings, map objects: icons of the view+0x98 hash map objects) are drawn halfway between their pre-update snapshot and their new transform, and restored exactly after the scene draw.\n- Mode predicate (frame_ctl.cpp GameModeBlockReason): mode 8 with LW logic active/running, LW view active and not suspended, no fade (+0x14 2/3), no battle transition flags, empty UI-sequence queue. GL+0x125 alone is not reliable (cleared by the battle-return GameLogic::reset while the map is shown).\n- GATE_CU_UISEQ also fixes the existing LW battle exit: FadeScreenToBlack -> clearGameData -> GameEngine::reset ran inside a B-render, one stock step early.\n- Not patched: the embedded APT LivingWorldMap window (shell MpGameSetup only, suspended view); optional B-skips of the shroud/shadow/water render-to-texture passes on the LW map (0x449D63, 0x449DBD; add only if the B-render cost matters)."
+  "Living World strategic map (phase 6)": "Analysis: docs/analysis/living_world/ (plan.md, area_*.md: 5 areas, adversarial verification, synthesis).\n- The LW map runs on the normal main loop and stepper. Everything that steps LW client state is already A-only (GATE_GC_LOOKAT, GATE_GC_LWXLAT, GATE_GC_LWVIEW = whole vt6C incl. zoom 0x49AB21/0x49AB3E, fades, army mover 0x6C038B, LW manager and eye tower via GATE_LWM, camera fly 0x6BF78E, GATE_GC_LWUI). LW logic reads that state (zoom vt60 0x6B96E1, target vt70 0x6BAF63, fade flags 0x6B5BD3, army moving flag and waypoints), so it keeps stock steps.\n- The LW scene draw vt20 0x49B618 is stateless per render; a B-render rebuilds the camera and redraws stock render k (LW6_CAM_REC verifies the camera on B: lwBExact/lwBMismatch).\n- Presentation on A-renders: the W3D camera ([view+0xC0]) is swapped to the halfway pose between the last two A-render cameras for the LW scene render only (never the LW view fields: logic reads +0x110 which the build derives); no shadow refit; the far plane follows the zoom, so CameraCutLimits.allowFarChange keeps the larger one. LW objects (armies, buildings, map objects: icons of the view+0x98 hash map objects) are drawn halfway between their pre-update snapshot and their new transform, and restored exactly after the scene draw.\n- Mode predicate (frame_ctl.cpp GameModeBlockReason): mode 8 with LW logic active/running, LW view active and not suspended, no fade (+0x14 2/3), no battle transition flags, empty UI-sequence queue. GL+0x125 alone is not reliable (cleared by the battle-return GameLogic::reset while the map is shown).\n- GATE_CU_UISEQ also fixes the existing LW battle exit: FadeScreenToBlack -> clearGameData -> GameEngine::reset ran inside a B-render, one stock step early.\n- Not patched: the embedded APT LivingWorldMap window (shell MpGameSetup only, suspended view); optional B-skips of the shroud/shadow/water render-to-texture passes on the LW map (0x449D63, 0x449DBD; add only if the B-render cost matters).",
+  "split present (heavy logic steps)": "Installed only with SplitPresent != 0 (phase \"sp\"). The B-render Present of a 60-mode pair is deferred (AotR60_PresentSkip returns 2, PRESENT_STUB returns S_OK) and shown by the main thread from a checkpoint inside the following logic step once a timer thread marks it due (target: middle of the predicted A_k -> A_k+1 gap), or at the latest by STEP_DRAIN after GameEngine::update. Nets: window pump (serviceWindowsOS), WW3D frame start (0x516C40), Begin_Render (0x517B30), a second Present, C0. Cancels: Reset_Device (GAP_RESET), mode switches, engine reset, iconic / background window, WW3D::Shutdown. All D3D calls stay on the main thread under the game DX mutex (0x51EF50 try-lock / 0x5208D0 unlock); x87/SSE state, LastError and the logic RNG seed are checked around the Present. Analysis: docs/analysis/split_present/ (area_d3d.md, area_sync.md, area_checkpoints.md, area_sim.md, spec.md, review.md). A presenter thread (Present on another thread) was rejected: it needs D3DCREATE_MULTITHREADED, DXVK 2.6.2 holds the device lock for the whole Present incl. the frame-latency wait while the main thread makes D3D calls during logic, and a WM_ACTIVATEAPP lock cycle exists."
  }
 }

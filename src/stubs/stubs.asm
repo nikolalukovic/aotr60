@@ -32,11 +32,13 @@ EXTERN g_vt188Calls:DWORD, g_vt188LastRet:DWORD, g_palBadRet:DWORD, g_iguiBadRet
 EXTERN g_lp4b:BYTE, g_uiPart4b:BYTE, g_wanim4b:BYTE
 EXTERN g_featPresent:BYTE, g_radarAFrame:DWORD
 EXTERN g_uiSeqLast:DWORD, g_lwRestoreN:DWORD
+EXTERN g_cpDue:BYTE, g_ppState:DWORD, g_cpFx:BYTE
 
 EXTERN OnPreRender:PROC, OnPostRender:PROC, OnEngineReset:PROC
 EXTERN AotR60_Pacer:PROC, AotR60_PresentSkip:PROC, AotR60_PresentDone:PROC
 EXTERN CamSwapToMk_B:PROC, S2_RecordMkAndOpen:PROC, SceneOpen_A:PROC, SceneRestore:PROC, CamSwapEndGuard:PROC
 EXTERN LwIconSnapshot:PROC, LwPresentOpen:PROC, LwPresentClose:PROC, LwCamAfterBuild:PROC, LwCamSceneEnd:PROC
+EXTERN AotR60_Checkpoint:PROC, AotR60_SpDrain:PROC, AotR60_SpNet:PROC, AotR60_SpCancel:PROC, AotR60_SpShutdown:PROC
 
 ; g_anomaly bits (keep in sync with runtime.h)
 ANOM_PAL_CALLER  EQU 1
@@ -153,6 +155,16 @@ DEFTARGET 80000F
 DEFTARGET 6C038B
 DEFTARGET 49B4A5
 DEFTARGET 518000
+DEFTARGET 6EC0D8
+DEFTARGET 6AF269
+DEFTARGET 8EDDF6
+DEFTARGET 60A15C
+DEFTARGET 70E013
+DEFTARGET 6325A0
+DEFTARGET 441A82
+DEFTARGET 516C45
+DEFTARGET 517B3A
+DEFTARGET 517AA7
 DEFTARGET 48B7B6
 DEFTARGET 4FD25A
 DEFTARGET 4CF434
@@ -774,11 +786,16 @@ PACER_CAVE ENDP
 PRESENT_STUB PROC
     cmp byte ptr [g_m60], 0
     je present
-    call AotR60_PresentSkip             ; cdecl() -> nonzero to skip this B-render's Present
+    call AotR60_PresentSkip             ; cdecl() -> 0 present, 1 skip this Present, 2 deferred (split present)
     test eax, eax
     jz present
+    cmp eax, 2
+    je deferred
     SKIPCNT IDX_PRESENT
     xor eax, eax                        ; S_OK
+    ret
+deferred:
+    xor eax, eax                        ; S_OK: the stock success path; the main thread presents it later
     ret
 present:
     RUNCNT IDX_PRESENT
@@ -806,6 +823,14 @@ PRESENT_STUB ENDP
 ; 0x522000 DX8Wrapper::Reset_Device entry 'mov eax,fs:[0]': pacing gap marker.
 GAP_RESET_CAVE PROC
     mov byte ptr [g_gapReset], 1
+    cmp dword ptr [g_ppState], 0
+    je stock
+    SAVE_ALL
+    push 0                              ; kCancelReset: a pending split-present B is never shown across a Reset
+    call AotR60_SpCancel
+    add esp, 4
+    RESTORE_ALL
+stock:
     mov eax, fs:[0]
     jmp dword ptr [T_522006]
 GAP_RESET_CAVE ENDP
@@ -1600,5 +1625,142 @@ STUB_LW6_CAM_SCENE_END PROC
 stock:
     jmp dword ptr [T_518000]
 STUB_LW6_CAM_SCENE_END ENDP
+
+; ===============================================================================================================
+; Split present (heavy logic steps; installed only with SplitPresent != 0, see split_present.h)
+; ===============================================================================================================
+
+; Checkpoint slow path: the main thread presents a due B frame from inside the logic step. Flags, GPRs, XMM0-7
+; (SAVE_ALL) and the x87/SSE state (fxsave, MXCSR included) are restored exactly, so the logic sees no change.
+CP_SLOW MACRO index
+    LOCAL notMain
+    IS_MAIN_KEEP_EAX                    ; g_cpFx is a single save area: main thread only (flags are dead here)
+    jne notMain
+    SAVE_ALL
+    fxsave g_cpFx
+    push index
+    call AotR60_Checkpoint              ; cdecl(index)
+    add esp, 4
+    fxrstor g_cpFx
+    RESTORE_ALL
+notMain:
+ENDM
+
+; SP_CP_MOD 0x62EA97 'lea ecx,[ebx+0x10] / mov eax,[ecx] / call [eax]' (UpdateModule::update in the bucket loop).
+; The callee returns to 0x62EA9C (two NOPs).
+CP_MOD_STUB PROC
+    cmp byte ptr [g_cpDue], 0
+    jne slow
+go:
+    lea ecx, [ebx + 10h]
+    mov eax, [ecx]
+    jmp dword ptr [eax]
+slow:
+    CP_SLOW 0
+    jmp go
+CP_MOD_STUB ENDP
+
+; SP_CP_PATH 0x6EC0D1 'push esi / lea edx,[ecx+0x800]' (pathfinder queue pop, once per path).
+CP_PATH_CAVE PROC
+    cmp byte ptr [g_cpDue], 0
+    jne slow
+go:
+    push esi
+    lea edx, [ecx + 800h]
+    jmp dword ptr [T_6EC0D8]
+slow:
+    CP_SLOW 1
+    jmp go
+CP_PATH_CAVE ENDP
+
+; Checkpoint before a plain call: the callee sees the stock return address.
+CP_CALL MACRO name, index, target
+name PROC
+    cmp byte ptr [g_cpDue], 0
+    jne slow
+go:
+    jmp dword ptr [T_&target]
+slow:
+    CP_SLOW index
+    jmp go
+name ENDP
+ENDM
+
+CP_CALL CP_PLAYER_STUB, 2, 6AF269       ; SP_CP_PLAYER 0x6A84E5 'call 0x6AF269' (per player)
+CP_CALL CP_SKAI_STUB,   3, 8EDDF6       ; SP_CP_SKAI 0x6A96F3 'call 0x8EDDF6' (skirmish AI entries)
+CP_CALL CP_SCRIPT_STUB, 4, 60A15C       ; SP_CP_SCRIPT 0x60A3BA 'call 0x60A15C' (script list)
+CP_CALL CP_OBJ1_STUB,   5, 70E013       ; SP_CP_OBJ1 0x62E912 'call 0x70E013' (per object)
+
+; SP_CP_PART 0xA3B564 'mov esi,[edi+0x120]' (next dirty object in PartitionManager::update); returns to the NOP.
+CP_PART_STUB PROC
+    cmp byte ptr [g_cpDue], 0
+    jne slow
+go:
+    mov esi, [edi + 120h]
+    ret
+slow:
+    CP_SLOW 6
+    jmp go
+CP_PART_STUB ENDP
+
+; SP_CP_COLL 0xB6D11E 'mov ecx,[esi+4] / mov edx,[esi]' (collision pair callbacks).
+CP_COLL_STUB PROC
+    cmp byte ptr [g_cpDue], 0
+    jne slow
+go:
+    mov ecx, [esi + 4]
+    mov edx, [esi]
+    ret
+slow:
+    CP_SLOW 7
+    jmp go
+CP_COLL_STUB ENDP
+
+; SP_STEP_DRAIN 0x441822 'call 0x6325A0' (GameEngine::update: render + step). A B frame still pending when the
+; logic step is over is presented here, at its target time at the latest before the next X iteration.
+STEP_DRAIN_STUB PROC
+    call dword ptr [T_6325A0]
+    cmp dword ptr [g_ppState], 0
+    jne drain
+    ret
+drain:
+    SAVE_ALL
+    call AotR60_SpDrain                 ; cdecl()
+    RESTORE_ALL
+    ret
+STEP_DRAIN_STUB ENDP
+
+; Nets: present (or cancel) a pending B before code that pumps window messages or starts the next frame.
+SPNET MACRO name, reason, displaced1, displaced2, target
+name PROC
+    cmp dword ptr [g_ppState], 0
+    jne net
+stock:
+    displaced1
+    displaced2
+    jmp dword ptr [T_&target]
+net:
+    SAVE_ALL
+    push reason
+    call AotR60_SpNet                   ; cdecl(reason)
+    add esp, 4
+    RESTORE_ALL
+    jmp stock
+name ENDP
+ENDM
+
+SPNET PUMP_NET_CAVE, 0, <mov eax, 0B71156h>, <>, 441A82                        ; serviceWindowsOS entry
+SPNET TCL_NET_CAVE, 1, <mov eax, ds:[0DD3474h]>, <>, 516C45                     ; WW3D frame start
+SPNET BEGIN_RENDER_NET_CAVE, 2, <sub esp, 28h>, <cmp byte ptr ds:[0DD1E14h], 0>, 517B3A ; Begin_Render
+
+; SP_SHUTDOWN 0x517AA0 'push -1 / push 0xB78DB8' (WW3D::Shutdown): stop split present before the device goes.
+SHUTDOWN_CAVE PROC
+    SAVE_ALL
+    call AotR60_SpShutdown              ; cdecl()
+    RESTORE_ALL
+    push -1
+    push 0B78DB8h
+    jmp dword ptr [T_517AA7]
+SHUTDOWN_CAVE ENDP
 
 END

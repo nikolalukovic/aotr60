@@ -40,11 +40,26 @@ TEST(sites_every_placeholder_resolves)
 {
     std::string error;
     PatchSet patches;
-    CHECK(BuildSitePatches(&patches, &error, true));
+    CHECK(BuildSitePatches(&patches, &error, true, true));
     if (!error.empty()) {
         std::printf("  %s", error.c_str());
     }
     CHECK_EQ(patches.Size(), static_cast<size_t>(sites::kSiteCount));
+}
+
+TEST(sites_split_present_sites_only_when_enabled)
+{
+    std::string error;
+    PatchSet without;
+    PatchSet with;
+    CHECK(BuildSitePatches(&without, &error, false, false));
+    CHECK(BuildSitePatches(&with, &error, false, true));
+    size_t sp = 0;
+    for (uint32_t i = 0; i < sites::kSiteCount; ++i) {
+        sp += sites::kSites[i].phase == sites::Phase::PhaseSp ? 1 : 0;
+    }
+    CHECK_EQ(sp, static_cast<size_t>(13));
+    CHECK_EQ(with.Size() - without.Size(), sp);
 }
 
 TEST(sites_rel32_operands_reach_their_symbols)

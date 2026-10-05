@@ -40,12 +40,15 @@ std::vector<uint8_t> ResolveReplacement(const sites::Site& site, std::string* er
     return bytes;
 }
 
-bool BuildSitePatches(PatchSet* patches, std::string* error, bool includePhase4b)
+bool BuildSitePatches(PatchSet* patches, std::string* error, bool includePhase4b, bool includeSplitPresent)
 {
     bool ok = true;
     for (uint32_t i = 0; i < sites::kSiteCount; ++i) {
         const sites::Site& site = sites::kSites[i];
         if (site.phase == sites::Phase::Phase4b && !includePhase4b) {
+            continue;
+        }
+        if (site.phase == sites::Phase::PhaseSp && !includeSplitPresent) {
             continue;
         }
         std::vector<uint8_t> replacement = ResolveReplacement(site, error);
@@ -59,10 +62,10 @@ bool BuildSitePatches(PatchSet* patches, std::string* error, bool includePhase4b
     return ok;
 }
 
-bool InstallSites(std::string* error, size_t* count)
+bool InstallSites(std::string* error, size_t* count, bool includeSplitPresent)
 {
     PatchSet patches;
-    if (!BuildSitePatches(&patches, error)) {
+    if (!BuildSitePatches(&patches, error, false, includeSplitPresent)) {
         return false;
     }
     if (!patches.Verify(error)) {

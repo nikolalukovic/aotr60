@@ -5,7 +5,7 @@
 namespace sites {
 
 enum class Kind : uint8_t { CallGate, JmpDetour, FuncDetour, OperandRedirect, PtrSlot, DataWrite };
-enum class Phase : uint8_t { Telemetry, Phase1, Phase2a, Phase2b, Phase3, Phase4b, Phase6 };
+enum class Phase : uint8_t { Telemetry, Phase1, Phase2a, Phase2b, Phase3, Phase4b, Phase6, PhaseSp };
 enum class TokenType : uint8_t { Byte, Rel32, Abs32 };
 
 struct Token {
@@ -295,6 +295,32 @@ inline constexpr uint8_t kLW6_CAM_REC_original[] = {0xE8, 0x22, 0xFD, 0xFF, 0xFF
 inline constexpr Token kLW6_CAM_REC_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_LW6_CAM_REC"}};
 inline constexpr uint8_t kLW6_CAM_SCENE_END_original[] = {0xE8, 0x6C, 0xC8, 0x07, 0x00};
 inline constexpr Token kLW6_CAM_SCENE_END_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STUB_LW6_CAM_SCENE_END"}};
+inline constexpr uint8_t kSP_CP_MOD_original[] = {0x8D, 0x4B, 0x10, 0x8B, 0x01, 0xFF, 0x10};
+inline constexpr Token kSP_CP_MOD_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "CP_MOD_STUB"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kSP_CP_PATH_original[] = {0x56, 0x8D, 0x91, 0x00, 0x08, 0x00, 0x00};
+inline constexpr Token kSP_CP_PATH_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "CP_PATH_CAVE"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kSP_CP_PLAYER_original[] = {0xE8, 0x7F, 0x6D, 0x00, 0x00};
+inline constexpr Token kSP_CP_PLAYER_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "CP_PLAYER_STUB"}};
+inline constexpr uint8_t kSP_CP_SKAI_original[] = {0xE8, 0xFE, 0x46, 0x24, 0x00};
+inline constexpr Token kSP_CP_SKAI_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "CP_SKAI_STUB"}};
+inline constexpr uint8_t kSP_CP_SCRIPT_original[] = {0xE8, 0x9D, 0xFD, 0xFF, 0xFF};
+inline constexpr Token kSP_CP_SCRIPT_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "CP_SCRIPT_STUB"}};
+inline constexpr uint8_t kSP_CP_OBJ1_original[] = {0xE8, 0xFC, 0xF6, 0x0D, 0x00};
+inline constexpr Token kSP_CP_OBJ1_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "CP_OBJ1_STUB"}};
+inline constexpr uint8_t kSP_CP_PART_original[] = {0x8B, 0xB7, 0x20, 0x01, 0x00, 0x00};
+inline constexpr Token kSP_CP_PART_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "CP_PART_STUB"}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kSP_CP_COLL_original[] = {0x8B, 0x4E, 0x04, 0x8B, 0x16};
+inline constexpr Token kSP_CP_COLL_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "CP_COLL_STUB"}};
+inline constexpr uint8_t kSP_STEP_DRAIN_original[] = {0xE8, 0x79, 0x0D, 0x1F, 0x00};
+inline constexpr Token kSP_STEP_DRAIN_replacement[] = {{TokenType::Byte, 0xE8, nullptr}, {TokenType::Rel32, 0, "STEP_DRAIN_STUB"}};
+inline constexpr uint8_t kSP_PUMP_NET_original[] = {0xB8, 0x56, 0x11, 0xB7, 0x00};
+inline constexpr Token kSP_PUMP_NET_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "PUMP_NET_CAVE"}};
+inline constexpr uint8_t kSP_TCL_NET_original[] = {0xA1, 0x74, 0x34, 0xDD, 0x00};
+inline constexpr Token kSP_TCL_NET_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "TCL_NET_CAVE"}};
+inline constexpr uint8_t kSP_BEGIN_RENDER_NET_original[] = {0x83, 0xEC, 0x28, 0x80, 0x3D, 0x14, 0x1E, 0xDD, 0x00, 0x00};
+inline constexpr Token kSP_BEGIN_RENDER_NET_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "BEGIN_RENDER_NET_CAVE"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
+inline constexpr uint8_t kSP_SHUTDOWN_original[] = {0x6A, 0xFF, 0x68, 0xB8, 0x8D, 0xB7, 0x00};
+inline constexpr Token kSP_SHUTDOWN_replacement[] = {{TokenType::Byte, 0xE9, nullptr}, {TokenType::Rel32, 0, "SHUTDOWN_CAVE"}, {TokenType::Byte, 0x90, nullptr}, {TokenType::Byte, 0x90, nullptr}};
 
 inline constexpr Site kSites[] = {
     {"C0_PRERENDER", Phase::Phase2a, Kind::CallGate, 0x6325CF, 6, kC0_PRERENDER_original, kC0_PRERENDER_replacement, 3},
@@ -432,9 +458,22 @@ inline constexpr Site kSites[] = {
     {"LW_SCENE_PRESENT", Phase::Phase6, Kind::CallGate, 0x449F43, 5, kLW_SCENE_PRESENT_original, kLW_SCENE_PRESENT_replacement, 2},
     {"LW6_CAM_REC", Phase::Phase6, Kind::CallGate, 0x49B77E, 5, kLW6_CAM_REC_original, kLW6_CAM_REC_replacement, 2},
     {"LW6_CAM_SCENE_END", Phase::Phase6, Kind::CallGate, 0x49B78F, 5, kLW6_CAM_SCENE_END_original, kLW6_CAM_SCENE_END_replacement, 2},
+    {"SP_CP_MOD", Phase::PhaseSp, Kind::CallGate, 0x62EA97, 7, kSP_CP_MOD_original, kSP_CP_MOD_replacement, 4},
+    {"SP_CP_PATH", Phase::PhaseSp, Kind::FuncDetour, 0x6EC0D1, 7, kSP_CP_PATH_original, kSP_CP_PATH_replacement, 4},
+    {"SP_CP_PLAYER", Phase::PhaseSp, Kind::CallGate, 0x6A84E5, 5, kSP_CP_PLAYER_original, kSP_CP_PLAYER_replacement, 2},
+    {"SP_CP_SKAI", Phase::PhaseSp, Kind::CallGate, 0x6A96F3, 5, kSP_CP_SKAI_original, kSP_CP_SKAI_replacement, 2},
+    {"SP_CP_SCRIPT", Phase::PhaseSp, Kind::CallGate, 0x60A3BA, 5, kSP_CP_SCRIPT_original, kSP_CP_SCRIPT_replacement, 2},
+    {"SP_CP_OBJ1", Phase::PhaseSp, Kind::CallGate, 0x62E912, 5, kSP_CP_OBJ1_original, kSP_CP_OBJ1_replacement, 2},
+    {"SP_CP_PART", Phase::PhaseSp, Kind::CallGate, 0xA3B564, 6, kSP_CP_PART_original, kSP_CP_PART_replacement, 3},
+    {"SP_CP_COLL", Phase::PhaseSp, Kind::CallGate, 0xB6D11E, 5, kSP_CP_COLL_original, kSP_CP_COLL_replacement, 2},
+    {"SP_STEP_DRAIN", Phase::PhaseSp, Kind::CallGate, 0x441822, 5, kSP_STEP_DRAIN_original, kSP_STEP_DRAIN_replacement, 2},
+    {"SP_PUMP_NET", Phase::PhaseSp, Kind::FuncDetour, 0x441A7D, 5, kSP_PUMP_NET_original, kSP_PUMP_NET_replacement, 2},
+    {"SP_TCL_NET", Phase::PhaseSp, Kind::FuncDetour, 0x516C40, 5, kSP_TCL_NET_original, kSP_TCL_NET_replacement, 2},
+    {"SP_BEGIN_RENDER_NET", Phase::PhaseSp, Kind::FuncDetour, 0x517B30, 10, kSP_BEGIN_RENDER_NET_original, kSP_BEGIN_RENDER_NET_replacement, 7},
+    {"SP_SHUTDOWN", Phase::PhaseSp, Kind::FuncDetour, 0x517AA0, 7, kSP_SHUTDOWN_original, kSP_SHUTDOWN_replacement, 4},
 };
 
-inline constexpr uint32_t kSiteCount = 135;
+inline constexpr uint32_t kSiteCount = 148;
 
 // Index of each site in kSites (telemetry counters are indexed the same way).
 enum Index : uint32_t {
@@ -573,6 +612,19 @@ enum Index : uint32_t {
     LW_SCENE_PRESENT = 132,
     LW6_CAM_REC = 133,
     LW6_CAM_SCENE_END = 134,
+    SP_CP_MOD = 135,
+    SP_CP_PATH = 136,
+    SP_CP_PLAYER = 137,
+    SP_CP_SKAI = 138,
+    SP_CP_SCRIPT = 139,
+    SP_CP_OBJ1 = 140,
+    SP_CP_PART = 141,
+    SP_CP_COLL = 142,
+    SP_STEP_DRAIN = 143,
+    SP_PUMP_NET = 144,
+    SP_TCL_NET = 145,
+    SP_BEGIN_RENDER_NET = 146,
+    SP_SHUTDOWN = 147,
 };
 
 } // namespace sites

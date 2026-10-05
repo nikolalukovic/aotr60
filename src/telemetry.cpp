@@ -8,6 +8,7 @@
 #include "pacer.h"
 #include "paths.h"
 #include "runtime.h"
+#include "split_present.h"
 
 #include <cstdio>
 #include <cstring>
@@ -96,6 +97,9 @@ struct TimingWindow {
     uint32_t bigStalls = 0;   // iterations over 3 slots
 };
 TimingWindow g_tw;
+SplitStats g_spPrev;           // split present counters at the last 10 s report
+uint32_t g_over25Prev = 0;
+uint32_t g_over34Prev = 0;
 uint32_t g_stallLines = 0;
 uint64_t g_stallsTotal = 0;
 
@@ -287,11 +291,39 @@ void Report(int64_t now)
     // C0 mode check max, Present call max, stalls over 1.5 and 3 slots.
     const TimingWindow& w = g_tw;
     char timing[256];
-    std::snprintf(timing, sizeof(timing), ",%.1f,%.1f,%.2f,%.1f,%.1f,%.2f,%.1f,%.2f,%.1f,%u,%u\r\n", Ms(w.iterMax),
+    std::snprintf(timing, sizeof(timing), ",%.1f,%.1f,%.2f,%.1f,%.1f,%.2f,%.1f,%.2f,%.1f,%u,%u", Ms(w.iterMax),
                   Ms(w.renderAMax), w.renderACount ? Ms(w.renderASum) / w.renderACount : 0.0, Ms(w.renderBMax),
                   Ms(w.logic1Max), w.logic1Count ? Ms(w.logic1Sum) / w.logic1Count : 0.0, Ms(w.logicOtherMax),
                   Ms(w.checkMax), Ms(w.presentMax), w.stalls, w.bigStalls);
     strncat_s(line, sizeof(line), timing, _TRUNCATE);
+    // Split present per window: on, B handoffs, deferred, presented at checkpoints / drain / nets, cancels, mean and
+    // max lateness against the target, longest Present inside logic, early releases, holds over 25 and 34 ms.
+    const SplitStats& n = g_spStats;
+    const SplitStats& o = g_spPrev;
+    uint32_t cp = 0, cpPrev = 0, nets = 0, netsPrev = 0, cancels = 0, cancelsPrev = 0;
+    for (int i = 0; i < 8; ++i) {
+        cp += n.checkpointPresents[i];
+        cpPrev += o.checkpointPresents[i];
+        cancels += n.cancels[i];
+        cancelsPrev += o.cancels[i];
+    }
+    for (int i = 0; i < 6; ++i) {
+        nets += n.nets[i];
+        netsPrev += o.nets[i];
+    }
+    uint32_t lateCount = n.lateCount - o.lateCount;
+    char split[256];
+    std::snprintf(split, sizeof(split), ",%d,%u,%u,%u,%u,%u,%u,%.2f,%.1f,%.2f,%u,%u,%u\r\n", SplitPresentActive() ? 1 : 0,
+                  n.handoffs - o.handoffs, n.deferred - o.deferred, cp - cpPrev, n.drainPresents - o.drainPresents,
+                  nets - netsPrev, cancels - cancelsPrev, lateCount ? Ms(n.lateSum - o.lateSum) / lateCount : 0.0,
+                  Ms(n.lateMax), Ms(n.inLogicMax), n.earlyReleases - o.earlyReleases,
+                  g_pacerStats.presentsOver25 - g_over25Prev, g_pacerStats.presentsOver34 - g_over34Prev);
+    strncat_s(line, sizeof(line), split, _TRUNCATE);
+    g_spStats.lateMax = 0;
+    g_spStats.inLogicMax = 0;
+    g_spPrev = g_spStats;
+    g_over25Prev = g_pacerStats.presentsOver25;
+    g_over34Prev = g_pacerStats.presentsOver34;
     g_tw = TimingWindow{};
     CsvLine(line);
     g_tPrev = g_t;
@@ -322,7 +354,9 @@ void TelemetryInit(const Config& cfg)
                     "a_rel_present_ms,b_rel_present_ms,present_spacing_min_ms,present_spacing_max_ms,present_wait_ms,"
                     "late_releases,late_release_ms,cam_shaker_far,on_time_pct,lw_ticks_s,lw_cam_a_swaps,"
                     "lw_objects_presented,iter_max_ms,render_a_max_ms,render_a_mean_ms,render_b_max_ms,logic1_max_ms,"
-                    "logic1_mean_ms,logic_other_max_ms,check_max_ms,present_max_ms,stalls,big_stalls\r\n");
+                    "logic1_mean_ms,logic_other_max_ms,check_max_ms,present_max_ms,stalls,big_stalls,"
+                    "sp_on,sp_handoffs,sp_deferred,sp_checkpoint,sp_drain,sp_nets,sp_cancels,sp_late_mean_ms,"
+                    "sp_late_max_ms,sp_inlogic_max_ms,sp_early,holds_over25,holds_over34\r\n");
             if (cfg.telemetry >= 2) {
                 SYSTEMTIME t;
                 GetLocalTime(&t);
@@ -466,6 +500,38 @@ void TelemetryOnPreRender(int stepperS)
             g_c5Stats.replays, g_c5Stats.suppressed, g_c5Stats.drops, g_cameraStats.bSwaps, g_cameraStats.bNoRecord,
             g_cameraStats.aSwaps, g_cameraStats.guardEnds, g_cameraStats.aShakeHeld, g_cameraStats.aShake,
             g_cameraStats.aCuts);
+        const SplitStats& sp = g_spStats;
+        if (SplitPresentInstalled()) {
+            Log("telemetry: split present %s: handoffs %u deferred %u (not: off %u unpaced %u fifo-full %u busy %u "
+                "game %u paused %u lw %u capture %u background %u cooldown %u due-now %u); presented at checkpoints "
+                "%u/%u/%u/%u/%u/%u/%u/%u (mod/path/player/skai/script/obj/part/coll), drain %u (waited %u), nets "
+                "%u/%u/%u/%u/%u (pump/frame/begin/present/c0); cancels %u/%u/%u/%u/%u/%u/%u/%u; mutex skips %u "
+                "try-lock fails %u retries %u; in-logic Presents %u (%.2f ms avg); fp changed %u seed changed %u; "
+                "errors %u device lost %u; timer wake late max %.2f ms; early releases %u (%.1f ms, not deferred %u); "
+                "predictions %u (empty %u, clipped %u); holds over 25 ms %u, over 34 ms %u",
+                SplitPresentActive() ? "on" : "off", sp.handoffs, sp.deferred, sp.notDeferred[kGateOff],
+                sp.notDeferred[kGateUnpaced], sp.notDeferred[kGateFifoFull], sp.notDeferred[kGateBusy],
+                sp.notDeferred[kGateGame], sp.notDeferred[kGatePaused], sp.notDeferred[kGateLwMap],
+                sp.notDeferred[kGateCapture], sp.notDeferred[kGateNotForeground], sp.notDeferred[kGateCooldown],
+                sp.notDeferred[kGateNoTarget], sp.checkpointPresents[0], sp.checkpointPresents[1],
+                sp.checkpointPresents[2], sp.checkpointPresents[3], sp.checkpointPresents[4], sp.checkpointPresents[5],
+                sp.checkpointPresents[6], sp.checkpointPresents[7], sp.drainPresents, sp.drainWaited, sp.nets[0],
+                sp.nets[1], sp.nets[2], sp.nets[3], sp.nets[4], sp.cancels[0], sp.cancels[1], sp.cancels[2],
+                sp.cancels[3], sp.cancels[4], sp.cancels[5], sp.cancels[6], sp.cancels[7], sp.mutexOwnedSkips,
+                sp.tryLockFails, sp.retries, sp.inLogicPresents,
+                sp.inLogicPresents ? Ms(sp.inLogicTicks) / sp.inLogicPresents : 0.0, sp.fpChanged, sp.seedChanged,
+                sp.presentErrors, sp.deviceLost, Ms(sp.wakeLateMax), sp.earlyReleases, Ms(sp.earlyTicks),
+                sp.borrowedNotDeferred, sp.predictions, sp.emptySlots, sp.outlierClips, g_pacerStats.presentsOver25,
+                g_pacerStats.presentsOver34);
+            if (sp.profileHits[0] || sp.profileHits[1] || sp.profileHits[5]) {
+                Log("telemetry: split present profile: hits %u/%u/%u/%u/%u/%u/%u/%u; longest stretch without a "
+                    "checkpoint per sub 1..6: %.2f %.2f %.2f %.2f %.2f %.2f ms",
+                    sp.profileHits[0], sp.profileHits[1], sp.profileHits[2], sp.profileHits[3], sp.profileHits[4],
+                    sp.profileHits[5], sp.profileHits[6], sp.profileHits[7], Ms(sp.profileGapMax[1]),
+                    Ms(sp.profileGapMax[2]), Ms(sp.profileGapMax[3]), Ms(sp.profileGapMax[4]), Ms(sp.profileGapMax[5]),
+                    Ms(sp.profileGapMax[6]));
+            }
+        }
         const LwStats& lw = g_lwStats;
         if (g_t.lwTicks || lw.aSwaps || lw.bExact || lw.iconSnapshots) {
             Log("telemetry: Living World %llu logic ticks; camera A-swaps %u no-history %u cuts %u ends %u, B exact %u "
@@ -620,10 +686,14 @@ extern "C" uint32_t __fastcall LogicUpdateWrapper(uint8_t* logic, void*, int sub
             g_w.broken = true;
         }
     }
-    int64_t t0 = g_cfg.telemetry >= 1 ? Now() : 0;
+    uint32_t frameBefore = Field<uint32_t>(logic, 0x40);
+    SpOnLogicBegin(logic, sub);
+    int64_t t0 = Now();
     uint32_t result = reinterpret_cast<LogicUpdateFn>(kFnLogicUpdate)(logic, sub);
-    if (t0) {
-        int64_t d = Now() - t0;
+    int64_t d = Now() - t0;
+    SpOnLogicEnd(logic, sub, frameBefore, d);
+    d -= SpPresentInCall(); // a split-present Present inside the call is not logic time
+    if (g_cfg.telemetry >= 1) {
         g_it.logic += d;
         g_it.logicSub = sub;
         g_it.logicFrame = Field<uint32_t>(logic, 0x40);

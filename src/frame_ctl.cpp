@@ -3,7 +3,9 @@
 #include "config.h"
 #include "frame_state.h"
 #include "log.h"
+#include "pacer.h"
 #include "runtime.h"
+#include "split_present.h"
 
 #include <cwchar>
 
@@ -274,6 +276,7 @@ void LeaveSixty(const char* reason)
     CameraReset();
     C5Reset();
     g_mDrawRid = 0xFFFFFFFFu;
+    SplitPresentReset(kCancelMode);
     PacerOnModeChange(false);
     TelemetryOnModeChange(false, reason);
 }
@@ -298,7 +301,8 @@ void UpdateTitle(const char* block)
     }
     wchar_t status[200];
     if (g_m60) {
-        swprintf(status, 200, L"[AotR60: 60 FPS%ls] ", g_featPresent ? L", smooth" : L"");
+        swprintf(status, 200, L"[AotR60: 60 FPS%ls%ls] ", g_featPresent ? L", smooth" : L"",
+                 SplitPresentActive() ? L", split" : L"");
     }
     else if (int left = PacerFallbackSecondsLeft()) {
         swprintf(status, 200, L"[AotR60: 30 FPS, performance fallback %d s] ", left);
@@ -339,11 +343,16 @@ bool HotkeyPressed(int key, bool& wasDown)
 // Test hotkeys in the game window, polled at C0 (between renders, so no presentation window is open):
 //   Ctrl+Shift+F11  60 FPS on/off (the mode controller applies it at the next pair boundary)
 //   Ctrl+Shift+F10  unit + camera interpolation on/off
+//   Ctrl+Shift+F9   split present (heavy logic steps) on/off
 void PollHotkeys()
 {
     if (HotkeyPressed(VK_F11, g_hotkeyDown)) {
         g_enabled = !g_enabled;
         Log("hotkey: 60 FPS %s", g_enabled ? "switched on" : "switched off");
+    }
+    static bool splitDown = false;
+    if (HotkeyPressed(VK_F9, splitDown) && SplitPresentInstalled()) {
+        SplitPresentToggleUser();
     }
     static bool interpDown = false;
     if (HotkeyPressed(VK_F10, interpDown)) {
@@ -381,6 +390,7 @@ extern "C" void __cdecl OnPreRender(uint8_t* engine)
         return;
     }
     TelemetryIterationBegin();
+    SplitPresentOnC0();
     CloseWindowsSafetyNet("C0");
     PollHotkeys();
 
@@ -408,6 +418,7 @@ extern "C" void __cdecl OnPreRender(uint8_t* engine)
         CameraReset();
         C5Reset();
         g_mDrawRid = 0xFFFFFFFFu;
+        SplitPresentReset(kCancelMode);
         PacerOnModeChange(true);
         TelemetryOnModeChange(true, "conditions met");
     }
@@ -419,6 +430,7 @@ extern "C" void __cdecl OnPreRender(uint8_t* engine)
     if (g_fs.m60 && g_fs.uiTick) {
         g_presFrac = FrameState::PresentationFraction(s);
     }
+    PacerOnC0(g_fs.m60 && !g_fs.inB, s);
     g_inClientUpdate = 1;
     g_skipB = (g_fs.m60 && g_fs.inB) ? 1 : 0;
     if (g_skipB) {
@@ -461,5 +473,6 @@ extern "C" void __cdecl OnEngineReset()
         C5Reset();
     }
     g_lodChecked = nullptr; // GameLOD may be re-read for the next game
+    SplitPresentReset(kCancelEngineReset);
     TelemetryOnReset();
 }

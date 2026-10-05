@@ -25,6 +25,16 @@ const char kDefaultConfigText[] =
     "UnitInterpolation = 1\n"
     "CameraInterpolation = 1\n"
     "\n"
+    "; Large battles: a long game-logic step would hold the screen; 1 = show the inserted frame in the middle of it.\n"
+    "; 0 = off. Ctrl+Shift+F9 switches it while playing.\n"
+    "SplitPresent = 1\n"
+    "; 1 = start the inserted frame early before a predicted heavy logic step (with SplitPresent).\n"
+    "SplitPresentEarly = 1\n"
+    "; 1 = catch up late frames faster when more time is owed (keeps exact game speed in heavy battles).\n"
+    "RepayProportional = 1\n"
+    "; 1 = allow SplitPresent with the system d3d9.dll instead of DXVK (untested).\n"
+    "SplitPresentNative = 0\n"
+    "\n"
     "; 1 = 60 FPS on the Living World strategic map as well; 0 = the map stays at 30 FPS (battles are not affected).\n"
     "LivingWorldMap = 1\n"
     "\n"
@@ -120,6 +130,25 @@ Config ParseConfig(std::string_view text, std::string* warnings)
         }
         else if (EqualsNoCase(key, "PresentPacing")) {
             ok = ParseBool(value, cfg.presentPacing);
+        }
+        else if (EqualsNoCase(key, "SplitPresent")) {
+            if (value.size() == 1 && value[0] >= '0' && value[0] <= '3') {
+                cfg.splitPresent = value[0] - '0';
+            }
+            else {
+                bool on = false;
+                ok = ParseBool(value, on);
+                cfg.splitPresent = on ? 1 : 0;
+            }
+        }
+        else if (EqualsNoCase(key, "SplitPresentEarly")) {
+            ok = ParseBool(value, cfg.splitPresentEarly);
+        }
+        else if (EqualsNoCase(key, "RepayProportional")) {
+            ok = ParseBool(value, cfg.repayProportional);
+        }
+        else if (EqualsNoCase(key, "SplitPresentNative")) {
+            ok = ParseBool(value, cfg.splitPresentNative);
         }
         else if (EqualsNoCase(key, "Pacing")) {
             if (EqualsNoCase(value, "stock")) {

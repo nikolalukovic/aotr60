@@ -8,6 +8,7 @@
 #include "log.h"
 #include "paths.h"
 #include "runtime.h"
+#include "split_present.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -62,9 +63,11 @@ void Startup()
     Log("%s loaded into %ls", kVersion, exe.c_str());
 
     Config cfg = dataDir.empty() ? Config{} : LoadConfig(dataDir);
-    Log("config: Enabled=%d Pacing=%s Telemetry=%d Fallback=%d UnitInterpolation=%d CameraInterpolation=%d",
+    Log("config: Enabled=%d Pacing=%s Telemetry=%d Fallback=%d UnitInterpolation=%d CameraInterpolation=%d "
+        "LivingWorldMap=%d SplitPresent=%d SplitPresentEarly=%d RepayProportional=%d SplitPresentNative=%d",
         cfg.enabled ? 1 : 0, cfg.pacing == Pacing::Stock ? "stock" : "nominal", cfg.telemetry, cfg.fallback ? 1 : 0,
-        cfg.unitInterpolation ? 1 : 0, cfg.cameraInterpolation ? 1 : 0);
+        cfg.unitInterpolation ? 1 : 0, cfg.cameraInterpolation ? 1 : 0, cfg.livingWorldMap ? 1 : 0, cfg.splitPresent,
+        cfg.splitPresentEarly ? 1 : 0, cfg.repayProportional ? 1 : 0, cfg.splitPresentNative ? 1 : 0);
 
     auto base = reinterpret_cast<const uint8_t*>(GetModuleHandleW(nullptr));
     if (reinterpret_cast<uintptr_t>(base) != kGameImageBase) {
@@ -83,7 +86,8 @@ void Startup()
         TelemetryInit(cfg);
         std::string error;
         size_t count = 0;
-        bool installed = InstallSites(&error, &count);
+        bool installed = InstallSites(&error, &count, cfg.splitPresent != 0);
+        SplitPresentInit(cfg, installed);
         FrameControlInit(cfg, installed);
         if (installed) {
             Log("host: known build; %zu patch sites installed (60 FPS %s)", count,

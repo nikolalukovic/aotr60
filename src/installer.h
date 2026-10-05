@@ -12,8 +12,10 @@
 // Replacement bytes of one site, or empty with `error` set when a symbol is unknown.
 std::vector<uint8_t> ResolveReplacement(const sites::Site& site, std::string* error);
 
-// Sites -> patch set (no memory access). Phase-4b sites (half-step effect forms) only when requested.
-bool BuildSitePatches(PatchSet* patches, std::string* error, bool includePhase4b = false);
+// Sites -> patch set (no memory access). Phase-4b sites (half-step effect forms) and the split-present
+// checkpoints only when requested.
+bool BuildSitePatches(PatchSet* patches, std::string* error, bool includePhase4b = false,
+                      bool includeSplitPresent = false);
 
 // Build, verify every original against the running game, then write all patches (all or nothing).
-bool InstallSites(std::string* error, size_t* count);
+bool InstallSites(std::string* error, size_t* count, bool includeSplitPresent = false);

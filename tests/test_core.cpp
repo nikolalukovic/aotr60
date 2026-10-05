@@ -27,6 +27,27 @@ TEST(config_defaults_when_empty)
     CHECK(cfg.fallback);
     CHECK(!cfg.allowDelayfix);
     CHECK(cfg.livingWorldMap);
+    CHECK_EQ(cfg.splitPresent, 1);
+    CHECK(cfg.splitPresentEarly);
+    CHECK(cfg.repayProportional);
+    CHECK(!cfg.splitPresentNative);
+}
+
+TEST(config_parses_split_present)
+{
+    std::string warnings;
+    Config a = ParseConfig("SplitPresent = 0\nSplitPresentEarly = off\nRepayProportional = 0\n", &warnings);
+    CHECK_EQ(a.splitPresent, 0);
+    CHECK(!a.splitPresentEarly);
+    CHECK(!a.repayProportional);
+    Config b = ParseConfig("SplitPresent = 2\nSplitPresentNative = yes\n", &warnings);
+    CHECK_EQ(b.splitPresent, 2);
+    CHECK(b.splitPresentNative);
+    Config c = ParseConfig("SplitPresent = on\n", &warnings);
+    CHECK_EQ(c.splitPresent, 1);
+    CHECK(warnings.empty());
+    Config d = ParseConfig("SplitPresent = 7\n", &warnings);
+    CHECK(!warnings.empty());
 }
 
 TEST(config_default_template_parses_to_defaults)

@@ -51,9 +51,17 @@ The game window's title bar shows the current state (in windowed mode), for exam
 |---|---|
 | Ctrl+Shift+F11 | 60 FPS on / off (switches at the next frame pair) |
 | Ctrl+Shift+F10 | smooth unit/camera interpolation on / off |
+| Ctrl+Shift+F9 | split present (large battles, see below) on / off |
 
 If the PC cannot hold 60 FPS for a sustained period, AotR60 falls back to 30 FPS for 30 s (doubling up to 8 min on
 repeats) and then tries again. Isolated hitches do not trigger this.
+
+**Large battles (split present).** The game runs its logic five times a second on the main thread. In big battles one
+of those steps can take 20-40 ms; nothing can be shown while it runs, so at 60 FPS the screen would hold the last frame
+for the whole step (a regular hitch; a stock 30 FPS frame has room to hide it). AotR60 predicts these steps and shows
+the already drawn in-between frame in the middle of the step instead: a timer thread marks the moment, and the game
+thread presents the frame from cheap checkpoints inside the logic (all Direct3D calls stay on the game thread). One long
+hold becomes two short ones. The logic itself is untouched. `SplitPresent = 0` or Ctrl+Shift+F9 switches it off.
 
 ## Settings
 
@@ -66,6 +74,10 @@ repeats) and then tries again. Isolated hitches do not trigger this.
 | `UnitInterpolation` | 1 | draw units half a step in between on the inserted frames |
 | `CameraInterpolation` | 1 | interpolate the camera picture too (needs UnitInterpolation) |
 | `PresentPacing` | 1 | without vsync: space the presented frames evenly |
+| `SplitPresent` | 1 | large battles: show the in-between frame in the middle of a long logic step (0 = off; 2 = profile, 3 = stress: testing only) |
+| `SplitPresentEarly` | 1 | with split present: start the frame before a predicted heavy logic step early |
+| `RepayProportional` | 1 | catch up late frames faster when more time is owed (keeps exact speed in heavy battles) |
+| `SplitPresentNative` | 0 | allow split present with the system d3d9.dll instead of DXVK (untested) |
 | `LivingWorldMap` | 1 | 60 FPS on the Living World strategic map too (0 = the map stays at 30; battles unaffected) |
 | `Fallback` | 1 | automatic fallback to 30 FPS on sustained overload |
 | `Telemetry` | 0 | 1 = speed/consistency checks in `aotr60.log` and `aotr60_rates.csv`; 2 = also a logic trace (testing) |

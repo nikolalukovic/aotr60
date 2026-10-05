@@ -17,7 +17,7 @@ OUT_INC = os.path.join(HERE, '..', 'src', 'stubs', 'sites.gen.inc')
 
 KINDS = {'call_gate': 'CallGate', 'jmp_detour': 'JmpDetour', 'func_detour': 'FuncDetour',
          'operand_redirect': 'OperandRedirect', 'ptr_slot': 'PtrSlot', 'data_write': 'DataWrite'}
-PHASES = {'telemetry': 'Telemetry', '1': 'Phase1', '2a': 'Phase2a', '2b': 'Phase2b', '3': 'Phase3',
+PHASES = {'telemetry': 'Telemetry', '1': 'Phase1', '2a': 'Phase2a', '2b': 'Phase2b', '3': 'Phase3', 'sp': 'PhaseSp',
           '4b': 'Phase4b', '6': 'Phase6'}
 
 
@@ -46,7 +46,7 @@ def main():
         'namespace sites {',
         '',
         'enum class Kind : uint8_t { CallGate, JmpDetour, FuncDetour, OperandRedirect, PtrSlot, DataWrite };',
-        'enum class Phase : uint8_t { Telemetry, Phase1, Phase2a, Phase2b, Phase3, Phase4b, Phase6 };',
+        'enum class Phase : uint8_t { Telemetry, Phase1, Phase2a, Phase2b, Phase3, Phase4b, Phase6, PhaseSp };',
         'enum class TokenType : uint8_t { Byte, Rel32, Abs32 };',
         '',
         'struct Token {',

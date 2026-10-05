@@ -3,6 +3,7 @@
 // 30 mode never comes here: the stock limiter runs unchanged.
 
 #include "pacer.h"
+#include "pacer_policy.h"
 
 #include "config.h"
 #include "log.h"
@@ -38,10 +39,10 @@ int64_t g_windowStart = 0;
 int64_t g_windowDebt = 0;
 uint32_t g_windowBRenders = 0;
 uint32_t g_windowLateSkips = 0;
+uint32_t g_windowIterations = 0;
+uint32_t g_windowLateIterations = 0; // released more than a quarter interval late
 int64_t g_fallbackUntil = 0;
-int g_fallbackCount = 0;
-int g_debtWindows = 0; // consecutive windows that lost more than 2 %
-int g_goodWindows = 0; // consecutive clean windows
+FallbackPolicy g_policy;
 
 int64_t Now()
 {
@@ -102,31 +103,26 @@ void EvaluateWindow(int64_t now)
     if (length < kWindowSeconds * g_freq) {
         return;
     }
-    double debtRatio = static_cast<double>(g_windowDebt) / static_cast<double>(length);
-    double skipRatio = g_windowBRenders ? static_cast<double>(g_windowLateSkips) / g_windowBRenders : 0.0;
-    g_pacerStats.lastDebtRatio = debtRatio;
-    g_pacerStats.lastSkipRatio = skipRatio;
-    // Only sustained overload counts. Single hitches (shader compiles, the start of a match, autosaves) lose the
-    // same time at stock 30 FPS, so they are no reason to leave 60: fall back when one window loses more than 10 %,
-    // or three windows in a row lose more than 2 %, or more than 10 % of B-render Presents had to be skipped.
-    g_debtWindows = debtRatio > 0.02 ? g_debtWindows + 1 : 0;
-    g_goodWindows = (debtRatio > 0.02 || skipRatio > 0.05) ? 0 : g_goodWindows + 1;
-    if (g_goodWindows >= 60) {
-        g_fallbackCount = 0; // five clean minutes: start the backoff from 30 s again
-    }
-    if (debtRatio > 0.10 || g_debtWindows >= 3 || skipRatio > 0.10) {
-        g_debtWindows = 0;
-        int backoff = 30 << (g_fallbackCount < 4 ? g_fallbackCount : 4); // 30 s .. 8 min
-        ++g_fallbackCount;
+    PacerWindow w;
+    w.lostRatio = static_cast<double>(g_windowDebt) / static_cast<double>(length);
+    w.lateRatio = g_windowIterations ? static_cast<double>(g_windowLateIterations) / g_windowIterations : 0.0;
+    w.skipRatio = g_windowBRenders ? static_cast<double>(g_windowLateSkips) / g_windowBRenders : 0.0;
+    g_pacerStats.lastDebtRatio = w.lostRatio;
+    g_pacerStats.lastSkipRatio = w.skipRatio;
+    if (g_policy.AddWindow(w)) {
+        int backoff = g_policy.NextBackoffSeconds();
         g_fallbackUntil = now + backoff * g_freq;
         ++g_pacerStats.fallbacks;
-        Log("pacer: falling back to 30 FPS for %d s (lost time %.2f%%, late Present skips %.1f%% over %llds)", backoff,
-            debtRatio * 100.0, skipRatio * 100.0, static_cast<long long>(kWindowSeconds));
+        Log("pacer: falling back to 30 FPS for %d s (over the last %llds: lost time %.2f%%, late iterations %.1f%%, "
+            "late Present skips %.1f%%)", backoff, static_cast<long long>(kWindowSeconds), w.lostRatio * 100.0,
+            w.lateRatio * 100.0, w.skipRatio * 100.0);
     }
     g_windowStart = now;
     g_windowDebt = 0;
     g_windowBRenders = 0;
     g_windowLateSkips = 0;
+    g_windowIterations = 0;
+    g_windowLateIterations = 0;
 }
 
 } // namespace
@@ -153,7 +149,9 @@ void PacerOnModeChange(bool)
     g_windowDebt = 0;
     g_windowBRenders = 0;
     g_windowLateSkips = 0;
-    g_debtWindows = 0;
+    g_windowIterations = 0;
+    g_windowLateIterations = 0;
+    g_policy.Reset();
     g_owed = 0;
     g_releaseTime = 0;
     g_lastPresent = 0;
@@ -204,7 +202,7 @@ extern "C" uint32_t __cdecl AotR60_Pacer(uint8_t* engine)
     else {
         g_deadline += g_interval;
         int64_t late = now - g_deadline;
-        int64_t clamp = g_interval * 5 / 4;
+        int64_t clamp = g_interval * 3; // lateness carried and caught up later; beyond this it is lost time
         if (late > g_freq / 4) {
             // Alt-tab, minimised window, debugger: a gap, not lost game time.
             g_deadline = now;
@@ -217,6 +215,9 @@ extern "C" uint32_t __cdecl AotR60_Pacer(uint8_t* engine)
             // speed stays exact while the presented frames keep an even spacing.
             ++g_pacerStats.lateReleases;
             g_pacerStats.lateReleaseTicks += late;
+            if (late > g_interval / 4) {
+                ++g_windowLateIterations;
+            }
             int64_t carried = late;
             if (late > clamp) {
                 g_windowDebt += late - clamp;
@@ -224,7 +225,7 @@ extern "C" uint32_t __cdecl AotR60_Pacer(uint8_t* engine)
                 carried = clamp;
             }
             g_owed += carried;
-            int64_t cap = 2 * g_interval;
+            int64_t cap = 6 * g_interval;
             if (g_owed > cap) {
                 g_windowDebt += g_owed - cap; // more than two frames behind: count it as lost time
                 g_pacerStats.debtTicks += g_owed - cap;
@@ -234,8 +235,8 @@ extern "C" uint32_t __cdecl AotR60_Pacer(uint8_t* engine)
         }
         else {
             int64_t pay = g_owed;
-            if (pay > g_interval / 16) {
-                pay = g_interval / 16;
+            if (pay > g_interval / 8) {
+                pay = g_interval / 8;
             }
             if (pay > -late) {
                 pay = -late;
@@ -247,6 +248,7 @@ extern "C" uint32_t __cdecl AotR60_Pacer(uint8_t* engine)
     }
     g_pacerRanRid = g_renderId;
     ++g_pacerStats.iterations;
+    ++g_windowIterations;
     EvaluateWindow(now);
     g_releaseTime = Now();
 

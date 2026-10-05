@@ -21,6 +21,7 @@ add_library(aotr60_core STATIC
     src/config.cpp
     src/crc32.cpp
     src/frame_state.cpp
+    src/pacer_policy.cpp
     src/patcher.cpp
 )
 target_include_directories(aotr60_core PUBLIC src)
@@ -64,6 +65,7 @@ add_executable(aotr60_tests
     tests/test_frame_state.cpp
     tests/test_sites.cpp
     tests/test_camera_math.cpp
+    tests/test_pacer_policy.cpp
 )
 target_link_libraries(aotr60_tests PRIVATE aotr60_runtime)
 target_compile_options(aotr60_tests PRIVATE ${AOTR60_COMMON_OPTIONS})

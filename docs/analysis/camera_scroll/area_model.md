@@ -1,0 +1,139 @@
+# AREA model
+
+## SUMMARY
+
+The slowdown comes from the stock camera code, not from AotR60. A numerical model (pan_model.py / run.py in <analysis workspace>/camera_elev\model\) follows the stock code paths read from game.dat. It finds three effects that stack.
+
+(1) World speed scales with absolute altitude (CONFIRMED). scrollBy 0x48C774 moves the look-at point by offset * zoom * 0.25 (0x48C959 `fld [ebx+0x3C]; fmul [0xBD1904]=0.25`, times ScrollSpeedScalar 1.0). zoom = (terrain + heightAboveGround)/300 (0x48C2AE..0x48C2C0). So once the camera has settled, pan speed in world units and on screen goes as (T+HAG)/HAG. Example: a plateau 200 units higher pans 1.69x faster than the valley floor.
+
+(2) The camera altitude is frozen during fast scrolling (CONFIRMED). In W3DView::update 0x48C309..0x48C357, the height is only adjusted when |scrollAmount| < ScrollAmountCutoff (50). The other trigger is the camera dropping below MinHeight (120); EnforceMaxCameraHeight is No in AotR. With ScrollFactor=50 (Options.ini key; H=V=50*0.02=1.0, 0x91FEBA), the full edge or keyboard offset is 100, so terrain following is off while panning. The look-at z (gL, view+0x2408) still tracks the terrain (0x48C223..0x48C236), so the eye slides along its view ray at a constant altitude. Going down, the camera ends up far above the valley; going up, it sinks to between 156 and 120 above the ground.
+
+(3) The slope itself is foreshortened (geometric, unavoidable). Ground flow at screen centre goes as (1 + g*cot37.5deg) = 1 + 1.303g, where g is the slope of the camera-height grid (capped at |0.6|).
+
+Combined result, measured as pixel flow at screen centre (4K, hfov 50deg, focal 4117 px). Reference R is a flat pan at T=0 (~3.9k px/s, 758 u/s).
+- Downhill from a 200-unit plateau: 1.69R on the plateau, 0.2-0.5R on the slope itself, 1.0R afterwards. That is a lasting 41% drop.
+- Uphill: 1.0R, then 2.0-2.4R on and above the slope while still scrolling, then 1.69R after stopping and resuming.
+
+At stock 30 FPS and in AotR60 the curves are identical (differences of 2-4% come from measuring with finite steps). There are zero cuts: the eye moves at most ~75 units per tick against the 1500-unit cut limit.
+
+Fixing it means changing the stock camera path, which breaks the project's camera-is-100%-stock rule (§1.6). A fix that changes only the picture is not workable.
+
+## STOCK
+
+Yes. The model predicts the slowdown exists at stock 30 FPS with the same size. Every cause is in stock code that AotR60 runs unchanged on A-renders: scrollBy multiplies by absolute zoom (0x48C959), the height freeze above ScrollAmountCutoff and the 120 floor (0x48C309..0x48C357), the gL update along the view ray (0x48C223), and the max-envelope camera grid (0x710107 / 0x70FE22).
+
+Size at ScrollFactor 50 (edge or keyboard offset 100 against cutoff 50; HAG 300; 200-unit height step; R = flat pan at T=0, about 758 u/s):
+- Going down: settled plateau 1.69R, about 0.2-0.5R while crossing the slope, 1.0R in the valley. The 41% lasting drop is the 'slows down'.
+- Going up: 1.0R, then 2.0-2.4R while still scrolling with the camera sunk to about 156 above the ground, then 1.69R after stopping and resuming.
+
+Formulas:
+- Settled speed goes as (T+HAG)/HAG.
+- During a fast pan at frozen altitude Z: centre flow goes as v*(sin a + g cos a)*sin a/(Z - T).
+
+A runtime check with Ctrl+Shift+F11 (30 FPS) and Ctrl+Shift+F10 (smoothing off) should show the same behaviour.
+
+## AOTR60
+
+AotR60 does not cause or amplify the slowdown. The camera trajectory M_k is 100% stock: it is stepped only on A-renders, the B-render skips W3DView::update at S1 0x48BD1B, and LookAt and the InGameUI camera are A-only. The A picture is the exact midpoint of a linear in-tick motion with constant orientation; quaternion slerp is an identity here and the eye is linearly averaged. Cut rules never trigger, since the per-tick eye move is at most about 75 units against the 1500 limit and the view plane does not change. The modelled pixel flow at 60 FPS matches 30 FPS within the 2-4% that comes from measuring with finite steps, with 0 cuts. The user log agrees: 6 cuts in about 6 minutes. The only possible amplification is perceptual (INFERRED): smoother 60 FPS motion makes speed changes easier to see, but their size is the same.
+
+## FIX
+
+Nothing in the AotR60 presentation path can fix this. The cause is the stock camera trajectory. A presentation-only fix is not feasible: the picture would have to differ from the camera used for mouse picking and selection by up to the terrain step (hundreds of units).
+
+Options, all changing the stock camera code (modelled in run.py):
+
+(N) Normalise scroll speed by height above the look-at ground. In scrollBy, replace `fld [ebx+0x3C]` at 0x48C959 with (zoom*offset.z - gL)/offset.z, i.e. view+0x3C - view+0x2408/view+0x23F0, with offset.z = 300. Effect: settled plateau and valley pans become equal (1.00R instead of 1.69R vs 1.00R), and fast pans over slopes are left with only the slope term (up 1.32R, down 0.64R at g0.3). This removes the largest, lasting part.
+
+(F) Keep terrain following during fast scrolling. Raise ScrollAmountCutoff (GD+0xAAC, copied to view+0x2404 at 0x48BCD8) to a very large value, or patch the compare at 0x48C31A. Effect: removes the height drift (the uphill zoom-in burst and the downhill zoom-out). Alone it keeps the plateau 1.69x factor.
+
+(N+F) together: flat pans are constant everywhere (1.00R on the plateau, before and after). Only the unavoidable slope foreshortening remains (1 + 1.303g: 0.64 / 1.32 at g=0.3, 0.30 at g=-0.6), and it lasts only while crossing the slope (dH/0.6 of travel). Removing that too would need slope-dependent world speed (dividing by 1 + g*cot a), which rises without bound near g = -0.77. Not recommended.
+
+Logic impact: none of these touch the logic step, saves or RNG. Each changes the camera state (pos, zoom, gL) that logic sees, compared with stock for the same input. That breaks the AotR60 rule that the camera state must be bit-exact stock (PLAN §1.2/§1.6: camera state, 0x452 messages and waypoints are logic-visible). In SP it is equivalent to the player scrolling differently, so it is deterministic-safe, but it is a gameplay-feel change, not a 60 FPS fix. It would apply at 30 FPS too and belongs to an opt-in AotR-side tweak. Editing ScrollAmountCutoff in gamedata.ini instead would change the INI CRC (an MP mismatch), so a runtime GameData patch is preferable if it is wanted. Recommendation: ship no AotR60 change; tell the user this is stock behaviour (verify with Ctrl+Shift+F11), and offer (N), optionally with (F), as a separate opt-in camera tweak.
+
+Files (all under <analysis workspace>/camera_elev\model\):
+- pan_model.py and run.py: the model.
+- summary.txt: per-phase table.
+- pan_timeseries.csv: per-frame flow, zoom, gL, eye z.
+- upd_dec.txt, b5.asm, bct_dec.txt, camsys_dec.txt, lookat_dec.txt: the decompiles used.
+- aotr60.log and aotr60_rates.csv: copies of the session log.
+
+Assumptions, INFERRED: view+0x2C (extra pitch) = 0; the per-map camera settings use the gamedata.ini defaults (min 120, max 300, pitch 37.5, smoothness 1.0); real map heights are not known, so absolute ratios scale with each map's actual height differences as (T2+HAG)/(T1+HAG).
+
+## FINDING [confirmed] Pan world speed is proportional to absolute camera altitude (zoom), not height above ground
+scrollBy multiplies the scroll offset by view+0x3C (zoom) * 0.25 * camera-settings scroll scalar. zoom is defined as eyeAltitude/cameraOffset.z, where cameraOffset.z = DefaultCameraMaxHeight = 300, and it settles at (terrainUnderCamera + heightAboveGround)/300. On settled flat ground at height T, the on-screen pan speed is therefore proportional to (T+HAG)/HAG.
+EVIDENCE: 0x48C936..0x48C983: `call [S+0x10]` (settings vt+0x10 = 0x9E68DC, returns S+0x14 = DefaultCameraScrollSpeedScalar 1.0), `fld [ebx+0x3C]`, `fmul [0xBD1904]` (0.25), fmulp, then delta = R(offset)*scale. desiredZoom = (view+0x40 + view+0x54)/view+0x23F0 at 0x48C2AE..0x48C2C0. cameraOffset.z = S+8 = 300 from initHeightForMap 0x48713E / settings vt+0x48 0x5011D5. Model: flat T=0 gives 758 u/s and 3932 px/s (60 mode); flat T=200 gives 1263 u/s and 6645 px/s, i.e. 1.69x.
+IMPLICATION: This is the main lasting effect. After descending 200 units the pan is 41% slower than on the plateau, and climbing onto a plateau makes the next pan 1.69x faster. It is a change of speed in world units, coming from stock code, at both 30 and 60 FPS.
+
+## FINDING [confirmed] Terrain following is disabled while fast-scrolling, so height above ground drifts
+While InGameUI reports scrolling, the camera height is only adjusted when |m_scrollAmount| < ScrollAmountCutoff (50) or the current height above ground is below MinHeight (120). EnforceMaxCameraHeight = No in AotR. With ScrollFactor=50, the edge, keyboard and typical right-mouse-drag offsets are at least 50, so zoom (eye altitude = 300*zoom) is frozen. gL (look-at z, view+0x2408) is still set to the camera-grid height every frame, so the eye moves along its fixed view ray. Downhill, the camera ends up far above the ground (500 instead of 300). Uphill, it sinks until the 120 floor triggers a 30%-per-frame push-up. After the scroll stops, zoom settles at CameraAdjustSpeed 0.3 per frame (about 0.3 s), which is a visible zoom-in or zoom-out after stopping.
+EVIDENCE: 0x48C309..0x48C357: Coord2D::length(view+0x23FC) vs [view+0x2404]=GD+0xAAC (set at 0x48BCD8), min = settings vt0 (S+4 = 120), max check only if GD+0xAB4. gL store at 0x48C223..0x48C236 when isScrolling and not scripted (InGameUI vt+0xA8 at 0x48C1FE). Edge offset = KSF(GD+0xAF8)*EdgeFactor(GD+0xAA4)*H/V*ramp% (0x83B471 mode 3); H=V=ScrollFactor*0.02 (0x91FEBA); the model assumes ScrollFactor = 50 in Options.ini. The fast path does not set [ebp-0xD], so the gL change is applied at the next scrollBy (a lag of one tick). Model: uphill eye-over-ground goes 300, then 217 on the slope, then 156 after; downhill 300, then 399, then 500.
+IMPLICATION: Uphill: on-screen speed bursts to 2.0-2.4x while scrolling. Downhill: the camera rises relative to the ground. While still scrolling this exactly cancels the plateau speed bonus, which produces the drop from 1.69x to 1.0x. The effect is geometric (distance to the ground changes); world speed stays constant while zoom is frozen.
+
+## FINDING [confirmed] Camera height grid is a max envelope limited to slope 0.6, and slopes foreshorten the ground flow
+Terrain following and gL use a separate camera height grid, not the real terrain. It takes the max over 4x4 blocks of the 10-unit heightmap (40-unit cells, heights = ushort*0.0390625), then dilates so that each cell is at least neighbour - 40*smoothness(GD+0xDE4 = 1.0, or the map key cameraMapHeightSmoothnessScalar)*0.6 (diagonal *1.4). Lookups interpolate on triangles. The grid gradient is therefore at most 0.6, and it rises before cliffs and falls after them (ramp length = dH/0.6). When the look-at point crosses a grid slope g at horizontal speed v, the screen-centre ground flow scales by (sin a + g cos a)/sin a = 1 + 1.303g (a = 37.5 deg).
+EVIDENCE: Grid builder 0x710107 (consts 0xBDD28C=40, 0xBDAD70=0.6, 0xBDBC98=1.4, 0xBDB8EC=0.0390625; default GD+0xDE4=1.0 written at 0x6436DA from XMM1=[0xBD1908]); lookup 0x70FE22 used at 0x48C1EE; built at map init 0x48D14D. Model slope phases (60 mode, relative to R): down g0.3 0.87 (time-series dips 0.5), down g0.6 0.55 phase mean with per-frame 0.21-0.24, cliff down 0.46; up g0.3 2.04, up g0.6 2.39. With both fixes applied, the residual is 0.64 at g0.3 down, 0.30 at g0.6 down, and 1.32 at g0.3 up.
+IMPLICATION: Even with ideal terrain following and height-normalised speed, the ground flow drops on descending slopes. This is the geometry of viewing a slope at 37.5 deg; it is short-lived (dH/0.6 of travel, about 0.26 s for a 200-unit drop at plateau speed) and is the 'crawl' when leaving a cliff edge.
+
+## FINDING [confirmed] Camera geometry used by the model
+cameraOffset = (0, -300/tan37.5, 300) = (0, -390.97, 300). eye = target + offset*zoom*(1 - gL/(300*zoom)), target = (pos.x, pos.y, gL). So eye.z = 300*zoom and the view direction is constant (depression 37.5 deg). hfov = 50 deg (0.87266463); vfov follows from the WW3D tan-based view plane (29.4 deg at 16:9). Stock tick: one camera step per stock render, 33 ms.
+EVIDENCE: buildCameraTransform 0x489F96 packs view+0x3C*view+0xA8 (vt+0x124 = 0x485218), view+0x2408 (gL), view+0x23E8..F0 (offset), view+0x70 = 1.0, and calls 0x502858 (factor = 1 - p[0xB]/(offset.z*zoom), target z = p[0x12] + gL). FOV reset 0x48CB99 writes view+0x6C = [0xBDD410] and view+0x70 = 1.0. view+0x2C (extra pitch) is assumed 0, as in Generals (INFERRED).
+IMPLICATION: Lets the pixel flow at 4K be computed exactly from the stock camera state.
+
+## FINDING [confirmed] AotR60 presentation neither causes nor amplifies the slowdown
+The camera is stepped only on A-renders, using the stock code. The A picture is halfway(M_{k-1}, M_k) and B is M_k. On these pans the orientation is constant and the eye moves linearly within a tick, so the halfway pose is the exact midpoint. Cut rules never fire: the largest per-tick eye move is about 75 units against the 1500 limit, and the view plane is constant. In every scenario the modelled 60 FPS flow equals the 30 FPS flow; the 2-4% difference comes from measuring perspective with finite steps (larger steps at 30 FPS).
+EVIDENCE: run.py summary: e.g. flat_T0 30 FPS 4015 vs 60 FPS 3932 px/s; down_200to0_g0.6 slope 2253 vs 2155; cuts 0/0 in every case. Session log (copied to model/aotr60.log and aotr60_rates.csv): 6 cuts in about 6 min of 60 FPS play, shake-held 47, no-history 1, so cuts are rare and unrelated to panning.
+IMPLICATION: No change is needed in the AotR60 presentation path. The smoother 60 FPS motion may make the speed changes easier to notice (INFERRED, perceptual), but their size is identical at 30 FPS.
+
+## FINDING [confirmed] Slow scrolling (offset < 50) follows the terrain, and world speed then tracks the terrain
+With offsets below the cutoff (during the 250 ms edge-scroll ramp-up, with ScrollFactor below 25, or with small right-mouse drags), zoom eases toward (T+HAG)/300 at 0.3 per frame. Height above ground stays near 300, but world speed rises and falls with the terrain, plus the slope foreshortening.
+EVIDENCE: Model slow40 cases (relative to R): up g0.3 goes 0.40 then 0.43; down g0.3 goes 0.66 then 0.33 on the slope.
+IMPLICATION: The slowdown is also present on slow pans; in that case it comes from the world-speed term plus the slope term, not from height drift.
+
+## VERIFIER
+Most of the stock-code claims check out against the binary. The model reproduces exactly: I copied it to <analysis workspace>\camera_elev\adv\ and the rerun's summary.txt is byte-identical. But the analysis does not explain the user's report as worded ("either when going down or up it slows down"). For the only pan it models (screen-up, away from the camera), its own results say uphill speeds up 2.0-2.4x. It rules out an uphill slowdown without testing pans toward the camera or sideways, and when I ran a pan toward the camera, the slowdown appears on the uphill slope. It also has one wrong data set (the slow-scroll cases stop before the slope). And it skips three other causes it could have checked: the camera grid may not exist on every map, the camera moves a fixed step per frame so render hitches slow it, and the session log shows such hitches. "AotR60 does not cause it" is likely but rests only on the model. The ranking of causes is fine as a hypothesis. It still needs the runtime A/B: Ctrl+Shift+F11 and Ctrl+Shift+F10, panning both toward and away from the camera.
+
+- [confirmed] scrollBy 0x48C774 moves the look-at point by offset * zoom(view+0x3C) * 0.25 * ScrollSpeedScalar, with no frame-time factor
+  CONFIRMED in the disassembly. At 0x48C956 `call [eax+0x10]` (settings object view+0x24C8) leaves the scalar on the x87 stack. 0x48C959 `fld [ebx+0x3C]`, 0x48C95C `fmul [0xBD1904]` (=0.25, read from the binary), 0x48C983 `fmulp`. Then delta = rotated offset * scale (0x48C962..0x48C9AC), added to pos (view+0xC) at 0x48C9CF..0x48C9E5. No dt term, so world speed per call = |off|*zoom*0.25 = 25 u/frame at off 100, zoom 1, i.e. 758 u/s at 30 steps/s. Side note: the x term uses an integer width/height (idiv at 0x48C820, which is 1 at 16:9). Harmless here. The scalar call 0x9E68DC -> S+0x14 was not checked; INI DefaultCameraScrollSpeedScalar = 1.0.
+
+- [confirmed] desiredZoom = (HAG target view+0x40 + camera-grid height view+0x54)/offset.z (view+0x23F0 = 300), so settled pan speed goes as (T+HAG)/HAG
+  CONFIRMED. ebx = view+0xB4 in that block. 0x48C2AE `movss [ebx-0x74]` (view+0x40), `addss [ebx-0x60]` (view+0x54, the height stored at 0x48C24D), `divss [ebx+0x233C]` (view+0x23F0). curHAG = zoom*offset.z - Tc is stored at view+0x50 (0x48C252..0x48C266). Model: flat T=200 vs T=0 is 6645/3932 = 1.69. Caveat (the analysis does flag it): the ratio uses absolute terrain height, so real maps scale as (T2+HAG)/(T1+HAG). The map heights and the user's wheel-zoom HAG are unknown. With HAG 200 (zoomed in) my rerun gives 0.49 instead of 0.59 going down, so the effect is stronger. Unhandled branch: 0x48C2C5..0x48C2EE re-captures the HAG target when scripted or when GameLogic+0x110==3 && GD+0xB71.
+
+- [confirmed] While scrolling, height is adjusted only if |scrollAmount| < ScrollAmountCutoff(50) or curHAG < min(120); EnforceMaxCameraHeight = No; ScrollFactor 50 gives H=V=1.0 and an edge or keyboard offset of 100
+  CONFIRMED. 0x48C309 Coord2D::length(view+0x23FC) vs view+0x2404, `ja` to the adjust at 0x48C35D. 0x48C320..0x48C335 compares settings vt[0] (min) with view+0x50. The max check only runs if GD+0xAB4 (0x48C33C). The adjust step is (desired-zoom)*GD+0xAB0 with a 1e-4 threshold. GameData field table: ScrollAmountCutoff -> GD+0xAAC (entry 0xC003D0), copied to view+0x2404 at 0x48BCD8. gamedata.ini 11274-11276: 0.3 / 50.0 / No. With ScrollFactor = 50 in Options.ini, 0x91FEBA multiplies by 0.02 (clamped >=1) into GD+0xAA0 and GD+0xA9C. That overrides INI H=0.4 and V=0.5. 0x83B471 mode 3 (edge) = GD+0xAF8 * GD+0xAA4 * H/V * ramp% (timeGetTime, GD+0xAA8). Mode 2 (keyboard) = GD+0xAF8 * H/V * 100. Mode 1 (right-mouse drag) = H*(mouse-anchor pixels) + H*KSF^2*unit vector. At 4K with H=1.0, any drag over about 50 px turns height following off. 'Typical drags are >= 50' is INFERRED.
+
+- [uncertain] gL (view+0x2408) tracks the camera grid during scrolling (0x48C223..0x48C236), so the eye slides along a fixed view ray at constant altitude
+  The code is CONFIRMED but only for one branch. 0x48C1CB tests the grid-valid byte view+0x2474 (grid object view+0x2458, flag +0x1C, set only at 0x710410). If it is set: grid lookup 0x70FE22, then gL = min(Tc, 5000) and view+0x241C is set to 0 when isScrolling and not scripted. If it is not set: 0x48C246 calls 0x484FAB, which takes the max terrain height at pos +/- GD+0xDD8 (CameraTerrainSampleRadiusForHeight = 1.0, field-table entry 0xC00A20). That path jumps straight to 0x48C24D, so gL is never updated during scrolling. The grid is built only if the heightmap exists and the map's smoothness scalar (map key cameraMapHeightSmoothnessScalar, else GD+0xDE4 = 1.0) is not 0 (0x71014C jnp 0x710415). So the gL-tracking geometry holds only for maps that do not set the scalar to 0. The user's map is UNVERIFIED. The 'one-tick lag' note is INFERRED: [ebp-0xD] can also be set by the shake path (0x48C15B) and by 0x4655DD (0x48C182).
+
+- [confirmed] The camera height grid is a 4x4 max (40-unit cells, heights ushort*0.0390625) dilated so that each cell is >= neighbour - 40*smoothness*0.6 (diagonal *1.4), giving a slope of at most 0.6
+  CONFIRMED at 0x710107. Constants read: 40 at 0xBDD28C, 0.0390625 at 0xBDB8EC, 0.6 at 0xBDAD70, 1.4 at 0xBDBC98. Each 3x3 neighbour pass (0x710325..0x7103F1) repeats while anything changed, up to max(w,h) passes (0x7103F7..0x710404), so it reaches a fixed point as the model assumes. A diagonal drop of 33.6 over 56.6 units is a slope of 0.59. There are also map-key min/max clamps (defaults -1e7 / 1e7) that the model ignores.
+
+- [refuted] The slope itself is foreshortened by 1 + 1.303g, which makes descending slopes crawl ('the crawl when leaving a cliff edge')
+  This is true only for the case modelled: a pan toward screen-up, away from the camera. What matters is the slope's sign along the camera's view direction, not 'downhill'. I reran the model with a pan toward the camera (adv\backward.py, scrollAmount fixed to abs()). Climbing a g0.6 slope, flow drops from 3777 to 2669 px/s (0.71x), and only afterwards jumps to 8207 px/s (camera sunk to 154 above the ground). Descending the same way, the slope shows 6447 against 6214 before, then the speed drops to 3797 (0.61x). So the 'unavoidable' crawl happens going UP when panning toward the camera. The analysis never modelled backward or sideways pans.
+
+- [confirmed] Uphill: 1.0R, then 2.0-2.4R on and above the slope while scrolling (eye 156-120 above the ground); downhill: 1.69R, then 0.2-0.5R on the slope, then 1.0R (a lasting 41% drop)
+  Reproduced exactly (summary_rerun.txt matches summary.txt). The time series shows something the summary leaves out. Going up, when curHAG drops below 120 (about 113), the floor rule fires one 30% step: zoom goes from 1.0 to 1.1867 in one tick and the eye jumps about 56 units back along the view ray. Centre flow falls from 12605 to 8497 px/s (-33%) in that one frame (t=2.41 to 2.51 s, up_0to200_g0.3). On a long climb this repeats each time the floor is hit, so the user sees jolts or brief slowdowns while going up. The camera settles about 155 above the ground, not 'between 156 and 120'.
+
+- [refuted] Slow scrolling (offset < 50): up g0.3 goes 0.40 then 0.43; down g0.3 goes 0.66 then 0.33
+  Those runs stop too early. At 303 u/s for 4 s, slow40_up ends at pos 1467, before the slope starts at y0=1500, so its 'slope' phase is just the edge of the grid envelope. slow40_down never reaches the valley. Rerun with scroll_s=12 (adv\slowcheck.py): up goes 0.40 -> 0.69 on the slope (2694 px/s) -> 0.66 after; down goes 0.66 -> 0.33 -> 0.40. So with height following active the pattern is still 'up faster, down slower'. The claimed 'up 0.40 then 0.43' is wrong.
+
+- [confirmed] Camera geometry: eye.z = 300*zoom, target = (pos, gL), factor = 1 - gL/(offset.z*zoom), constant 37.5 deg depression, hfov 50 deg
+  CONFIRMED for the normal path of 0x502858: local_8 = zoom*offset.z and factor = 1 - p[0xB]/local_8, where p[0xB] = view[0x902] = view+0x2408 = gL. 0xBDD410 = 0.87266 rad was read from the binary. The 'real zoom' branch (p[0x23] = byte view+0x243A: offset not scaled, FOV scaled by zoom) is entered only via 0x486F14 and is cleared at 0x48B34D / 0x48D442, so it is assumed off in normal play (INFERRED). view+0x2C = 0 and the shake offsets = 0 remain INFERRED.
+
+- [uncertain] AotR60 neither causes nor amplifies the slowdown: the camera is stepped on A-renders only, the halfway of M_{k-1}/M_k is exact, and there are no cuts
+  Plausible but unproven. Shown: LookAt is gated (GATE_GC_LOOKAT 0x6484B2 in sites.gen.h:393). SceneOpen_A (src/camera.cpp:267-322) uses default limits: 1500 units, 45 deg, 5% extent, allowFarChange=false. The pose math (camera_math.cpp:68-125) is exact for a pure translation. No Generals far-plane-by-zoom constants (1200 / 1.05) are referenced in 0x48xxxx-0x49xxxx. But the camera moves a fixed step per A-render with no dt (see scrollBy), so its real-time speed is A-render rate * step. The session CSV (adv\aotr60_rates.csv) shows a_renders_s at about 30 on average, but per 10 s window render_a_max_ms reaches 50-163 ms, holds_over34 is 1-14, and from t>=285 s stalls are 30-58 per window with on_time 90%. Each such hold freezes the pan for 2-5 stock steps. If these line up with views of large or high terrain, they look like an elevation slowdown. Neither the analysis nor I can tell from 10 s aggregates. The '60 = 30 within 2-4%' result is model output only.
+
+- [confirmed] Session log: 6 cuts in about 6 minutes, shake-held 47, no-history 1
+  aotr60.log line 700 (17:31:13): 'camera B-swaps 10309 ... A-swaps 2347 ... shake-held 47 ... cuts 6'. The CSV cam_a_cuts column reaches 6 cumulative and cam_a_nohist stays at 1. Note the CSV cam_a_shake column is 0 throughout (a different counter). The log does not show which way the user was panning or over what terrain, so it supports 'cuts are rare' and nothing more.
+
+- [uncertain] Fix options: (N) normalise by eye height above the look-at ground, (F) disable the cutoff, (N+F) leaves only the slope term; none can be done by presentation only
+  The numbers reproduce. But (N) alone halves world traversal while the camera is sunk going uphill (fixN_up after: 390 u/s against 758 before). That is itself a 'slows down going up' in map-traversal terms. (F) needs view+0x2404 patched or GD+0xAAC set before the copy at 0x48BCD8, not just a later GameData write. N+F's 'only the slope term remains' holds only for forward pans: for pans toward the camera the slope term flips sign (see backward.py). The reasoning that this breaks the camera-is-bit-exact-stock rule (PLAN 1.2/1.6) is correct.
+
+## MISSED
+1) The user's wording. The model explains a slowdown only for forward pans going downhill, and its own data says forward uphill gets faster (2.0-2.4x). It never models pans toward the camera or sideways. Rerun (adv\backward.py): panning toward the camera up a g0.6 slope drops the flow to 0.71x while crossing the slope. The foreshortening depends on the slope's sign along the view direction, so whether 'up' or 'down' slows down depends on which way the user scrolls. That fits "either when going down or up". There are also one-frame -33% jolts each time the 120-unit floor fires on a climb (zoom 1.0 to 1.187 in one tick at the time-series point t=2.41-2.51 s).
+2) The analysis does not tie its 41% figure to wording. 'Slows down' may mean screen speed, which the analysis measures, or map-traversal speed. In map-traversal terms, frozen zoom keeps world speed constant: it never slows going up and only stays high going down.
+3) There is a second height path. Without a valid camera grid (map key cameraMapHeightSmoothnessScalar = 0) the engine uses 0x484FAB, a max over ±CameraTerrainSampleRadiusForHeight (GD+0xDD8 = 1.0, an AotR INI key not mentioned), and gL is not updated while scrolling. The user's map is unknown.
+4) Camera speed is a fixed step per A-render with no dt. Render hitches therefore slow the pan in real time. The session CSV shows A-render maxima of 50-163 ms and 1-14 holds over 34 ms per 10 s, getting worse after t=285 s (stalls 30-58 per window). A camera high above a valley (eye 500 vs 300, about 2.8x the ground area in view) plausibly costs more render time at 4K. This needs a per-frame camera-height vs render-time trace, and it is the one route by which 60 mode (two renders per step) could amplify the effect.
+5) The slow40 cases stop before the slope, so the slow-scroll finding's numbers are wrong (corrected: up 0.40 -> 0.69 -> 0.66, down 0.66 -> 0.33 -> 0.40).
+6) The effect grows with the user's wheel zoom: at HAG 200, going down gives 0.49x instead of 0.59x. Absolute map heights decide every ratio and are unknown.
+7) No runtime check was done. 'Same at stock 30' is model output only. The decisive tests are Ctrl+Shift+F11 and Ctrl+Shift+F10 A/B runs on the same slope, panning both toward and away from the camera.
+My files are in <analysis workspace>/camera_elev\adv\: summary_rerun.txt, slowcheck.py, backward.py, plus pan_model.py with the abs(scrollAmount) fix, and copies of aotr60.log / aotr60_rates.csv.
